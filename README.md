@@ -1,6 +1,6 @@
 \# 🚀 Equipo-4-PP2-ASTRONOMICA-2C-2025
 
-:)
+
 
 Este repositorio contiene la estructura y el código fuente del proyecto \*\*Astronómica\*\*, desarrollado en el marco de la materia PP2 para el curso 2C del año 2025. El objetivo principal es aplicar técnicas de ciencia de datos y aprendizaje automático en el análisis de fenómenos astronómicos.
 
