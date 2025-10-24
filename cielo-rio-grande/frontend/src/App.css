@@ -1,0 +1,180 @@
+/* App.css - estilo avanzado con panel satélite */
+.App {
+  background-color: #05060a;
+  color: #eef2f3;
+  font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+  min-height: 100vh;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.title {
+  text-align: center;
+  font-size: 28px;
+  margin-bottom: 14px;
+  color: #ffffff;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+}
+
+/* layout */
+.dashboard {
+  display: flex;
+  gap: 40px;
+  max-width: 1300px;
+  margin: 0 auto;
+  justify-content: flex-start;
+  align-items: flex-start;
+}
+
+/* columna izquierda: cámara + controls */
+.left-column {
+  flex: 0 0 640px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.image-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.sky-image {
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+  transition: transform 0.6s ease, box-shadow 0.6s ease;
+}
+
+.sky-image:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 20px 45px rgba(0,0,0,0.9);
+}
+
+/* HUD (esquina superior izquierda sobre la imagen) */
+.hud-left {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: linear-gradient(180deg, rgba(0,0,0,0.55), rgba(0,0,0,0.25));
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-family: monospace;
+  font-size: 13px;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  backdrop-filter: blur(4px);
+}
+
+/* controles y métricas pequeñas debajo de la imagen */
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  justify-content: center;
+}
+
+.btn {
+  background: linear-gradient(180deg,#1f8fff,#0f6fe6);
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  box-shadow: 0 6px 18px rgba(10, 80, 160, 0.25);
+}
+
+.btn:hover { transform: translateY(-2px); }
+
+.small-metrics {
+  display: flex;
+  gap: 14px;
+  color: #cfe7ff;
+  font-size: 14px;
+}
+
+/* columna derecha: panel clima + satélite */
+.right-column {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-left: auto;
+  width: 580px; /* un poco más ancho para clima + octas juntos */
+}
+
+/* contenedor horizontal para Clima Detallado + Octas */
+.weather-horizontal {
+  display: flex;
+  gap: 12px;
+}
+
+/* paneles individuales */
+.weather-panel {
+  background: rgba(18,18,20,0.9);
+  border-radius: 10px;
+  padding: 12px;
+  box-shadow: 0 10px 20px rgba(0,0,0,0.6);
+  transition: all 0.4s ease;
+  flex: 1;
+}
+
+/* panel Satélite permanece debajo */
+.sat-info {
+  background: rgba(12,12,14,0.85);
+  border-radius: 10px;
+  padding: 12px;
+  box-shadow: 0 8px 18px rgba(0,0,0,0.6);
+}
+
+.sat-controls {
+  display:flex;
+  gap:8px;
+  margin-bottom:10px;
+  justify-content:center;
+}
+
+.btn-ghost {
+  border: 1px solid rgba(255,255,255,0.08);
+  background: transparent;
+  color: #dfefff;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.btn-ghost:hover { background: rgba(255,255,255,0.03); }
+
+.loading { text-align:center; color:#cfe7ff; padding:8px; }
+
+.sat-thumb {
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:8px;
+}
+
+.sat-thumb img {
+  width: 100%;
+  max-width: 320px;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+}
+
+.sat-caption {
+  font-size:12px;
+  color:#9fb6d6;
+  text-align:center;
+  margin-top:6px;
+}
+
+.hint {
+  color:#9fb6d6;
+  text-align:center;
+  padding:8px;
+  font-size:13px;
+}
