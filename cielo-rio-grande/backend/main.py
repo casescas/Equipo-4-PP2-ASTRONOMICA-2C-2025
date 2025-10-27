@@ -6,43 +6,40 @@ from datetime import datetime, timedelta
 import os
 import io
 from fastapi.responses import JSONResponse
-# from tensorflow.keras.models import load_model
-# from tensorflow.keras.preprocessing import image
+from tensorflow.keras.models import load_model
+from tensorflow.keras.preprocessing import image
 from PIL import Image
 import numpy as np
-import torch
-import torch.nn as nn
-from torchvision import models, transforms
+# 
+from database import inicializar_db, intentar_registrar_prediccion
+# 
+from datetime import datetime, timedelta
+#
+from typing import Optional
+from datetime import datetime, timedelta, date, time
+from fastapi import Query, HTTPException
+import sqlite3
 
-
-
-
-def cargar_modelo_pytorch():
-    modelo = models.efficientnet_b0(pretrained=False)
-    modelo.classifier[1] = nn.Linear(modelo.classifier[1].in_features, 9)
-    modelo.load_state_dict(torch.load("models/mejor_modelo_efficientnet.pth", map_location=torch.device("cpu")))
-    modelo.eval()
-    return modelo
-
-modelo = cargar_modelo_pytorch()
-
-# --- Transformación de imagen ---
-transformacion = transforms.Compose([
-    transforms.Resize((224, 224)),
-    transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-])
 
 
 # Cargar modelo al iniciar la app
-# modelo = load_model("models/mejor_modelo_efficientnet.pth")
-# print("✅ Modelo de octas cargado correctamente.")
-
+modelo = load_model("models/600EPOC_modelo_octa.h5")
+print("✅ Modelo de octas cargado correctamente.")
 
 # ✅ Importamos la función desde tu módulo utils/satellite.py
 from utils.satellite import fetch_owm_tile
 
 app = FastAPI()
+
+@app.on_event("startup")
+def on_startup():
+    """
+    Función que se ejecuta una sola vez al iniciar el servidor FastAPI.
+
+    """
+    print("INFO: Iniciando servidor FastAPI...")
+    inicializar_db()
+
 
 # 🔒 Configuración de CORS (permite que React acceda al backend)
 app.add_middleware(
@@ -137,15 +134,15 @@ def obtener_satelite():
         return Response(content=f"Error interno: {e}", status_code=500)
 
 IMG_URL_BASE = "http://201.251.63.225/meteorologia/cielo/image/"
+
 @app.get("/octas")
 def predecir_octas(ts: int = 0):
     """
     Descarga la última imagen del cielo, la procesa y predice el nivel de octas
-    usando el modelo .pth de EfficientNet.
+    usando el modelo 600EPOC_modelo_octa.h5.
     Devuelve también la categoría FEW/SCT/BKN/OVC y su descripción.
     """
-
-    # Calcular nombre de imagen (según lógica original)
+    from datetime import datetime, timedelta
     ahora = datetime.now()
     bucket = ahora.minute // 10
     candidato = bucket * 10 + 2
@@ -159,104 +156,128 @@ def predecir_octas(ts: int = 0):
     nombre_imagen = f"{ahora.year}-{ahora.strftime('%m%d%H')}{minuto_real:02d}.jpg"
     url_imagen = f"{IMG_URL_BASE}{nombre_imagen}"
 
-    # Descargar imagen
-    try:
-        resp = requests.get(url_imagen, timeout=10)
-        resp.raise_for_status()
-    except Exception as e:
-        return Response(content=f"No se pudo descargar la imagen: {e}", status_code=400)
+    # Descargar la imagen
+    resp = requests.get(url_imagen, timeout=10)
+    if resp.status_code != 200:
+        return Response(
+            content=f"No se pudo descargar la imagen: {resp.status_code}",
+            status_code=resp.status_code
+        )
 
-    # Cargar imagen en memoria
+    # Cargar y preprocesar imagen
     img = Image.open(io.BytesIO(resp.content)).convert('RGB')
-    img_tensor = transformacion(img).unsqueeze(0)
+    img = img.resize((224, 224))
+    img_array = image.img_to_array(img)
+    img_array = img_array / 255.0
+    img_array = np.expand_dims(img_array, axis=0).astype('float32')
 
-    # Predicción
-    with torch.no_grad():
-        salida = modelo(img_tensor)
-        probabilidades = torch.softmax(salida, dim=1).numpy()[0]
-        clase_predicha = int(np.argmax(probabilidades))
-        confianza = float(np.max(probabilidades))
+    # Predicción con el modelo
+    prediccion = modelo.predict(img_array)
+    print(prediccion)
+    clase_predicha = int(np.argmax(prediccion))  # octas 0–8
+    probabilidad = float(prediccion[0][clase_predicha])  # confianza
 
     # Clasificación según rango
-    if clase_predicha == 0:
+    if clase_predicha == 0: 
         codigo, descripcion = "SKC", "Cielo despejado"
     elif clase_predicha <= 2:
-        codigo, descripcion = "FEW", "Nubes escasas"
+        codigo, descripcion = "FEW", "Pocas nubes"
     elif clase_predicha <= 4:
         codigo, descripcion = "SCT", "Nubes dispersas"
     elif clase_predicha <= 7:
-        codigo, descripcion = "BKN", "Nubosidad muy rota o abundante"
+        codigo, descripcion = "BKN", "Muy nublado"
     else:
-        codigo, descripcion = "OVC", "Cielo totalmente cubierto"
-    # Devolver JSON con resultados
-    return JSONResponse({
+        codigo, descripcion = "OVC", "Cubierto"
+
+    # --- INICIO BLOQUE NUEVO PARA REGISTRO DB ---
+    
+    # 1. Empaquetar los datos de la predicción en un diccionario
+    datos_para_registrar = {
         "octas_predichas": clase_predicha,
-        "confianza": round(confianza, 4),
+        "confianza": round(probabilidad, 4),
         "categoria": codigo,
         "descripcion": descripcion,
         "imagen": url_imagen
-    })
+    }
+    
+    # 2. Intentar el registro (la función interna maneja la lógica de 1 hora)
+    #    Pasamos 'ahora', que es el datetime que capturamos al inicio de la función.
+    intentar_registrar_prediccion(datos_para_registrar, ahora)
+    
+    # 3. Devolver la respuesta al usuario (igual que antes)
+    return JSONResponse(datos_para_registrar)
 
-# @app.get("/octas")
-# def predecir_octas(ts: int = 0):
-#     """
-#     Descarga la última imagen del cielo, la procesa y predice el nivel de octas
-#     usando el modelo 600EPOC_modelo_octa.h5.
-#     Devuelve también la categoría FEW/SCT/BKN/OVC y su descripción.
-#     """
-#     from datetime import datetime, timedelta
-#     ahora = datetime.now()
-#     bucket = ahora.minute // 10
-#     candidato = bucket * 10 + 2
-#     if candidato > ahora.minute:
-#         bucket -= 1
-#         if bucket < 0:
-#             ahora -= timedelta(hours=1)
-#             bucket = 5
-#         candidato = bucket * 10 + 2
-#     minuto_real = candidato
-#     nombre_imagen = f"{ahora.year}-{ahora.strftime('%m%d%H')}{minuto_real:02d}.jpg"
-#     url_imagen = f"{IMG_URL_BASE}{nombre_imagen}"
+# ---- HISTORIAL  ----------------------------------------
 
-#     # Descargar la imagen
-#     resp = requests.get(url_imagen, timeout=10)
-#     if resp.status_code != 200:
-#         return Response(
-#             content=f"No se pudo descargar la imagen: {resp.status_code}",
-#             status_code=resp.status_code
-#         )
 
-#     # Cargar y preprocesar imagen igual que en Colab
-#     img = Image.open(io.BytesIO(resp.content)).convert('RGB')
-#     img = img.resize((224, 224))
-#     img_array = image.img_to_array(img)
-#     img_array = img_array / 255.0
-#     img_array = np.expand_dims(img_array, axis=0).astype('float32')
+try:
+    from database import DB_FILE
+except Exception:
+    DB_FILE = "registros-octas.db"
 
-#     # Predicción con el modelo
-#     prediccion = modelo.predict(img_array)
-#     clase_predicha = int(np.argmax(prediccion))  # octas 0–8
-#     probabilidad = float(prediccion[0][clase_predicha])  # confianza
+def _parse_date(s: Optional[str]) -> Optional[date]:
+    if s is None:
+        return None
+    try:
+        return date.fromisoformat(s)  # espera YYYY-MM-DD
+    except Exception:
+        raise HTTPException(status_code=400, detail=f"Fecha inválida (usa YYYY-MM-DD): {s}")
 
-#     # Clasificación según rango
-#     if clase_predicha <= 2:
-#         codigo, descripcion = "FEW", "Pocas nubes"
-#     elif clase_predicha <= 4:
-#         codigo, descripcion = "SCT", "Nubes dispersas"
-#     elif clase_predicha <= 7:
-#         codigo, descripcion = "BKN", "Muy nublado"
-#     else:
-#         codigo, descripcion = "OVC", "Cubierto"
+@app.get("/historial")
+def historial(
+    desde: Optional[str] = Query(None, description="YYYY-MM-DD, ej: 2025-10-25"),
+    hasta: Optional[str] = Query(None, description="YYYY-MM-DD, ej: 2025-10-27"),
+):
+    """
+    Devuelve el histórico sin paginación, filtrando solo por fecha (sin horas).
+    """
+    d1 = _parse_date(desde)
+    d2 = _parse_date(hasta)
+    if d1 and d2 and d2 < d1:
+        raise HTTPException(status_code=400, detail="`hasta` debe ser >= `desde`")
 
-#     return JSONResponse({
-#         "octas_predichas": clase_predicha,
-#         "confianza": round(probabilidad, 4),
-#         "categoria": codigo,
-#         "descripcion": descripcion,
-#         "imagen": url_imagen
-#     })
+    # Convertimos a límites de día
+    where, params = [], []
+    if d1:
+        ini = datetime.combine(d1, time.min).isoformat()
+        where.append("fecha_hora_prediccion >= ?")
+        params.append(ini)
+    if d2:
+        fin = datetime.combine(d2, time.max).isoformat()
+        where.append("fecha_hora_prediccion <= ?")
+        params.append(fin)
+
+    where_sql = f"WHERE {' AND '.join(where)}" if where else ""
+
+    conn = sqlite3.connect(DB_FILE, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    try:
+        cur = conn.execute(
+            f"""
+            SELECT id, fecha_hora_prediccion, octas_predichas, confianza, categoria, descripcion, url_imagen
+            FROM registro_historico
+            {where_sql}
+            ORDER BY datetime(fecha_hora_prediccion) ASC
+            """,
+            params,
+        )
+        items = [dict(r) for r in cur.fetchall()]
+    finally:
+        conn.close()
+
+    return {
+        "desde": d1.isoformat() if d1 else None,
+        "hasta": d2.isoformat() if d2 else None,
+        "items": items,
+    }
+# ---- FIN HISTORIAL ----------------------------------------------------------
+
 
 # 🧭 Endpoint raíz (opcional, para verificar que el servidor corre)
 @app.get("/")
 def home():
     return {"mensaje": "Servidor de nubosidad Río Grande activo 🚀"}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

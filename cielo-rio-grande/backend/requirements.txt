@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+requests
+opencv-python
+python-multipart
+tensorflow
+pillow
+numpy
+python-dotenv
+typing_extensions
