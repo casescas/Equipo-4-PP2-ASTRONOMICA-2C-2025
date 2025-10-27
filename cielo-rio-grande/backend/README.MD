@@ -6,7 +6,7 @@ Este documento explica cómo ejecutar el **backfill de datos de octas** a partir
 
 ## 🧩 ¿Qué hace el backfill?
 
-- Descarga imágenes de cielo en intervalos de 10 minutos.
+- Obtiene imágenes de cielo en intervalos de 10 minutos.
 - Clasifica la cantidad de nubes usando un **modelo de IA** (`600EPOC_modelo_octa.h5`).
 - Genera un registro histórico en **SQLite**, guardando:
   - `fecha_hora_prediccion`
