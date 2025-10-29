@@ -1,3 +1,4 @@
+# backfill.py — Backfill fijo (6 imágenes por hora)
 import argparse
 from datetime import datetime, timedelta
 import requests
