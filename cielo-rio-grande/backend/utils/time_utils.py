@@ -30,7 +30,7 @@ def _parse_date(s: Optional[str]) -> Optional[date]:
     if s is None:
         return None
     try:
-        return date.fromisoformat(s)  # espera YYYY-MM-DD
+        return date.fromisoformat(s)
     except Exception:
         raise HTTPException(
             status_code=400, detail=f"Fecha inválida (usa YYYY-MM-DD): {s}"

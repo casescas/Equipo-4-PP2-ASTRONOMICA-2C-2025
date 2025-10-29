@@ -1,22 +1,15 @@
-from datetime import datetime, timedelta
-from database import guardar_prediccion
+from datetime import datetime
 from fastapi import Response
 import requests
-from pytz import timezone
-from tensorflow.keras.models import load_model
-import numpy as np
 
 from utils.time_utils import bucket_10m_plus2
 from utils.image_utils import image_url
-from utils.clouds_utils import classify_octas, preprocess_image_rgb224
+from services.clouds_service import save_prediction, predict_octas
 
 IMG_URL_BASE = "http://201.251.63.225/meteorologia/cielo/image/"
-modelo = load_model("models/600EPOC_modelo_octa.h5")
-print("✅ Modelo de octas cargado correctamente.")
-TZ = timezone("America/Argentina/Buenos_Aires")
 
 
-def predict_octas():
+def predict_octas_task():
     ahora = datetime.now()
     print(ahora, "predict octas pipeline")
 
@@ -30,21 +23,15 @@ def predict_octas():
             status_code=resp.status_code,
         )
 
-    img_array = preprocess_image_rgb224(resp.content)
+    pred = predict_octas(resp.content)
 
-    prediccion = modelo.predict(img_array)
-    clase_predicha = int(np.argmax(prediccion))
-    probabilidad = float(prediccion[0][clase_predicha])
-
-    codigo, descripcion = classify_octas(clase_predicha)
-
-    datos_para_registrar = {
-        "octas_predichas": clase_predicha,
-        "confianza": round(probabilidad, 4),
-        "categoria": codigo,
-        "descripcion": descripcion,
+    data = {
+        "octas_predichas": pred["octas_predichas"],
+        "confianza": pred["confianza"],
+        "categoria": pred["categoria"],
+        "descripcion": pred["descripcion"],
         "imagen": url_imagen,
-        "modelo_version": "600EPOC_modelo_octa.h5",
+        "modelo_version": pred["modelo_version"],
     }
 
-    guardar_prediccion(datos_para_registrar)
+    save_prediction(data)

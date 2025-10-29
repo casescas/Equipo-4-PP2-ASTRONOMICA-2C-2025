@@ -2,8 +2,7 @@ from fastapi import APIRouter
 from datetime import datetime, timedelta
 from fastapi.responses import RedirectResponse, StreamingResponse, Response
 import io
-from services.images_service import latest_image_url, try_head
-from utils.satellite_utils import fetch_owm_tile
+from services.images_service import latest_image_url, try_head, fetch_owm_tile
 
 router = APIRouter()
 
@@ -33,6 +32,3 @@ def obtener_satelite():
 
     except Exception as e:
         return Response(content=f"Error interno: {e}", status_code=500)
-
-
-IMG_URL_BASE = "http://201.251.63.225/meteorologia/cielo/image/"

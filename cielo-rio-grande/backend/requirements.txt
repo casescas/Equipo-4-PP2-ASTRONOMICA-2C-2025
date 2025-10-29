@@ -10,3 +10,4 @@ python-dotenv
 typing_extensions
 apscheduler
 pytz
+pydantic-settings

@@ -67,9 +67,8 @@ python backfill.py `
 
 1) Desde enero de 2024 hasta ahora (lo más usado)
 
-python backfill.py `
-  --desde "2024-01-01T00:00" `
-  --hasta "$(Get-Date -Format 'yyyy-MM-ddTHH:mm')" ` --step-min 10
+python -m backfill --desde 2024-01-01T00:00 --hasta "$(date +%Y-%m-%dT%H:%M)"
+
 
 # 💾 Modos de escritura
 
@@ -117,7 +116,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS ux_registro_historico_fecha
 
 # Activar entorno
 source .venv/bin/activate         # Linux/macOS
-venv\Scripts\Activate        # Windows PowerShell
+.venv\Scripts\Activate.ps1        # Windows PowerShell
 
 # Actualizar repo y deps
 git pull

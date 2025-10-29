@@ -2,16 +2,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from tensorflow.keras.models import load_model
 from apscheduler.schedulers.background import BackgroundScheduler
-from database import inicializar_db
+from config.db_init import init_database
 import uvicorn
 from jobs.scheduler import (
     start_scheduler,
     stop_scheduler,
 )
 from routers import cloud_routes, images_routes, weather_routes
-
-modelo = load_model("models/600EPOC_modelo_octa.h5")
-print("✅ Modelo de octas cargado correctamente.")
 
 app = FastAPI()
 scheduler = BackgroundScheduler()
@@ -29,7 +26,7 @@ app.add_middleware(
 @app.on_event("startup")
 def startup_event():
     print("INFO: Iniciando servidor FastAPI...")
-    inicializar_db()
+    init_database()
 
     print("INFO: Iniciando scheduler...")
     start_scheduler()
