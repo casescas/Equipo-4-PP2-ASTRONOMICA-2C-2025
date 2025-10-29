@@ -6,7 +6,7 @@ Este documento explica cómo ejecutar el **backfill de datos de octas** a partir
 
 ## 🧩 ¿Qué hace el backfill?
 
-- Descarga imágenes de cielo en intervalos de 10 minutos.
+- Obtiene las imágenes de cielo en intervalos de 10 minutos.
 - Clasifica la cantidad de nubes usando un **modelo de IA** (`600EPOC_modelo_octa.h5`).
 - Genera un registro histórico en **SQLite**, guardando:
   - `fecha_hora_prediccion`
@@ -58,22 +58,18 @@ python backfill.py `
   --desde "2025-01-01T00:00" `
   --hasta "2025-01-31T23:59" `
   --step-min 10 `
-  --modo forzar
 
-2) Últimos 3 días automáticamente
+1) Últimos 3 días automáticamente
 python backfill.py `
   --desde "$( (Get-Date).AddDays(-3).ToString('yyyy-MM-ddTHH:mm') )" `
   --hasta "$(Get-Date -Format 'yyyy-MM-ddTHH:mm')" `
   --step-min 10 `
-  --modo forzar
 
-3) Desde enero de 2024 hasta ahora (lo más usado)
+1) Desde enero de 2024 hasta ahora (lo más usado)
 
 python backfill.py `
   --desde "2024-01-01T00:00" `
-  --hasta "$(Get-Date -Format 'yyyy-MM-ddTHH:mm')" `
-  --step-min 10 `
-  --modo forzar
+  --hasta "$(Get-Date -Format 'yyyy-MM-ddTHH:mm')" ` --step-min 10
 
 # 💾 Modos de escritura
 
@@ -121,7 +117,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS ux_registro_historico_fecha
 
 # Activar entorno
 source .venv/bin/activate         # Linux/macOS
-.venv\Scripts\Activate.ps1        # Windows PowerShell
+venv\Scripts\Activate        # Windows PowerShell
 
 # Actualizar repo y deps
 git pull

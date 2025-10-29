@@ -1,211 +1,223 @@
-/* App.css - versión avanzada y sofisticada */
-.App {
-  background: linear-gradient(160deg, #05060a 0%, #0a0c13 100%);
-  color: #eef2f3;
-  font-family: 'Segoe UI', Roboto, Arial, sans-serif;
-  min-height: 100vh;
-  padding: 20px;
-  box-sizing: border-box;
+import React, { useState, useEffect } from "react";
+import Dashboard from "./pages/Dashboard";
+
+// —— Helpers
+const labelCategoria = (c) =>
+  ({ SKC: "Despejado", FEW: "Pocas nubes", SCT: "Nubes dispersas", BKN: "Muy nublado", OVC: "Cubierto" }[c] || c || "--");
+
+const confColor = (c) => (c >= 0.7 ? "#16a34a" : c >= 0.5 ? "#eab308" : "#ef4444");
+
+// —— Gauge
+function ConfidenceRing({ value = 0, size = 120, stroke = 10 }) {
+  const pct = Math.max(0, Math.min(1, value));
+  const r = (size - stroke) / 2;
+  const C = 2 * Math.PI * r;
+  const offset = C * (1 - pct);
+  return (
+    <div className="relative grid place-items-center" style={{ width: size, height: size }}>
+      <svg width={size} height={size}>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,.08)" strokeWidth={stroke} />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke={confColor(pct)}
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeDasharray={C}
+          strokeDashoffset={offset}
+          style={{ transition: "stroke-dashoffset .6s ease" }}
+        />
+      </svg>
+      <div className="absolute text-xl font-extrabold text-sky-50">{Math.round(pct * 100)}%</div>
+    </div>
+  );
 }
 
-.title {
-  text-align: center;
-  font-size: 30px;
-  margin-bottom: 20px;
-  color: #ffffff;
-  text-shadow: 0 3px 10px rgba(0,0,0,0.7);
-}
+export default function App() {
+  const [clima, setClima] = useState({});
+  const [octas, setOctas] = useState({});
+  const [timestamp, setTimestamp] = useState(Date.now());
+  const [satImgUrl, setSatImgUrl] = useState(null);
+  const [loadingSat, setLoadingSat] = useState(false);
 
-/* layout principal */
-.dashboard {
-  display: flex;
-  gap: 40px;
-  max-width: 1400px;
-  margin: 0 auto;
-  justify-content: flex-start;
-  align-items: flex-start;
-}
+  // única imagen: desactivamos cámara grande
+  const SHOW_MAIN_CAMERA = false;
 
-/* columna izquierda: cámara + controles */
-.left-column {
-  flex: 0 0 660px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
+  useEffect(() => {
+    const it = setInterval(() => setTimestamp(Date.now()), 600000);
+    return () => clearInterval(it);
+  }, []);
 
-/* contenedor imagen tipo cámara sofisticada */
-.image-wrapper {
-  position: relative;
-  width: 100%;
-  border-radius: 22px;
-  background: linear-gradient(145deg, #0d1118, #1a1f29);
-  padding: 6px;
-  box-shadow: 0 12px 30px rgba(0,0,0,0.7), 0 0 0 4px rgba(0,191,255,0.3) inset;
-  overflow: hidden;
-  transition: transform 0.6s ease, box-shadow 0.6s ease;
-}
+  useEffect(() => {
+    fetch("http://127.0.0.1:8000/clima").then(r => r.json()).then(setClima).catch(() => setClima({}));
+    fetch("http://127.0.0.1:8000/octas").then(r => r.json()).then(setOctas).catch(() => setOctas({}));
+  }, [timestamp]);
 
-.sky-image {
-  display: block;
-  width: 100%;
-  height: auto;
-  border-radius: 16px;
-  object-fit: cover;
-  box-shadow: inset 0 0 10px rgba(255,255,255,0.1);
-  transition: transform 0.6s ease, filter 0.5s ease;
-}
+  useEffect(() => () => satImgUrl && URL.revokeObjectURL(satImgUrl), [satImgUrl]);
 
-.sky-image:hover {
-  transform: scale(1.03);
-  filter: brightness(1.1) contrast(1.05);
-  box-shadow: 0 20px 40px rgba(0,0,0,0.9), inset 0 0 15px rgba(0,191,255,0.4);
-}
+  const cameraUrl = `http://127.0.0.1:8000/imagen?ts=${timestamp}`;
+  const fechaActual = new Date(timestamp).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "2-digit" });
 
-/* HUD superior izquierda */
-.hud-left {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  background: rgba(0,0,0,0.5);
-  backdrop-filter: blur(6px);
-  padding: 8px 14px;
-  border-radius: 10px;
-  font-family: monospace;
-  font-size: 13px;
-  color: #ffffff;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
+  const coberturaPct =
+    octas?.octas_predichas != null ? Math.round((Number(octas.octas_predichas) / 8) * 100) : null;
+  const confianzaPct = Math.round((Number(octas?.confianza) || 0) * 100);
 
-/* controles debajo de la cámara */
-.controls {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  justify-content: center;
-}
+  const fetchSatellite = async (layer = "clouds_new") => {
+    setLoadingSat(true);
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/satellite?layer=${layer}&ts=${timestamp}`);
+      if (!res.ok) throw new Error("No sat image");
+      const blob = await res.blob();
+      setSatImgUrl(URL.createObjectURL(blob));
+    } catch (e) {
+      console.error(e);
+      setSatImgUrl(null);
+    } finally {
+      setLoadingSat(false);
+    }
+  };
 
-.btn {
-  background: linear-gradient(145deg, #1f8fff, #0f6fe6);
-  color: white;
-  border: none;
-  padding: 10px 16px;
-  border-radius: 10px;
-  cursor: pointer;
-  font-weight: 700;
-  box-shadow: 0 6px 20px rgba(10, 80, 160, 0.35);
-  transition: all 0.3s ease;
-}
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-[#05060a] to-[#0a0c13] text-white pb-16">
+      <h1 className="text-3xl font-bold flex items-center justify-center py-6">
+        <span className="mr-2">☁️</span> Nubosidad Río Grande
+      </h1>
 
-.btn:hover {
-  transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 12px 30px rgba(10, 80, 160, 0.5);
-}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-7xl mx-auto px-4">
 
-.small-metrics {
-  display: flex;
-  gap: 16px;
-  color: #a8cfe7;
-  font-size: 15px;
-}
+        {/* ===== TARJETA CLASIFICACIÓN (única imagen) ===== */}
+        <div className="lg:col-span-2 rounded-2xl border border-black/30 bg-gradient-to-br from-[#0f141c]/90 to-[#0b0f15]/90 shadow-[0_14px_30px_rgba(0,0,0,.5)] p-5">
+          <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6 items-center">
 
-/* columna derecha: panel clima + octas + satélite */
-.right-column {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  margin-left: auto;
-  width: 600px;
-}
+            {/* Ventana “GoPro” */}
+            <div className="flex flex-col">
+              <div className="relative w-full aspect-[4/3] overflow-hidden rounded-2xl bg-[#0a0f16] shadow-[inset_0_0_0_2px_rgba(255,255,255,.05),inset_0_20px_60px_rgba(255,255,255,.05),inset_0_-30px_60px_rgba(0,0,0,.45)]">
+                {/* barra superior */}
+                <div className="absolute left-3 right-3 top-3 flex items-center justify-between rounded-xl bg-black/60 px-3 py-1 text-xs font-semibold text-slate-200">
+                  <span className="opacity-90 font-extrabold tracking-wide">GoPro</span>
+                  <span className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-red-500 shadow-[0_0_6px_rgba(239,68,68,.8)] animate-pulse" />
+                    <span className="text-red-400">REC</span>
+                  </span>
+                </div>
 
-/* paneles sofisticados */
-.weather-panel {
-  background: linear-gradient(145deg, rgba(18,18,20,0.95), rgba(28,28,32,0.95));
-  border-radius: 14px;
-  padding: 16px;
-  box-shadow: 0 12px 24px rgba(0,0,0,0.65);
-  transition: all 0.4s ease;
-}
+                {/* imagen */}
+                <img
+                  src={cameraUrl}
+                  alt="Cielo Río Grande"
+                  className="absolute inset-0 h-full w-full object-cover"
+                  onError={(e) => (e.currentTarget.style.opacity = 0.2)}
+                />
 
-.weather-panel:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 20px 40px rgba(0,0,0,0.75);
-}
+                {/* HUDs inferiores */}
+                <div className="absolute left-3 bottom-12 rounded-md bg-black/50 px-2 py-1 text-[11px] font-semibold text-slate-200">
+                  ISO 400 | f/2.8 | 1/60s | EV 0.0 | 1080p60
+                </div>
+                <div className="absolute left-3 bottom-3 rounded-md bg-black/60 px-2 py-1 text-[11px] font-semibold text-slate-200">
+                  IAP Camera RIOG 53.8°S 67.8°W
+                </div>
+                <div className="absolute right-3 bottom-3 rounded-md bg-black/60 px-2 py-1 text-[11px] font-semibold text-slate-200 text-right">
+                  FECHA: {fechaActual}<br />
+                  TEMP: {clima?.temp ?? "--"} °C · NUB: {octas?.octas_predichas ?? "--"} OCTAS
+                </div>
+              </div>
 
-/* panel satélite */
-.sat-info {
-  background: linear-gradient(145deg, rgba(12,12,14,0.9), rgba(22,22,26,0.9));
-  border-radius: 14px;
-  padding: 16px;
-  box-shadow: 0 10px 28px rgba(0,0,0,0.65);
-}
+              <div className="mt-2 ml-1 text-xs tracking-widest font-extrabold text-slate-400/90">HERD 9</div>
+            </div>
 
-.sat-controls {
-  display:flex;
-  gap:10px;
-  margin-bottom:12px;
-  justify-content:center;
-}
+            {/* Métricas */}
+            <div className="flex flex-col gap-3">
+              <h3 className="text-2xl font-extrabold leading-tight text-sky-50">
+                Modelo de Clasificación<br />de Nubes
+              </h3>
 
-.btn-ghost {
-  border: 1px solid rgba(255,255,255,0.12);
-  background: transparent;
-  color: #dfefff;
-  padding: 8px 12px;
-  border-radius: 10px;
-  cursor: pointer;
-  font-weight: 600;
-  transition: all 0.3s ease;
-}
+              <div className="grid grid-cols-2 md:grid-cols-3 items-center gap-x-6 gap-y-3">
+                <div className="flex flex-col gap-1">
+                  <span className="text-[12px] tracking-widest uppercase text-slate-400">Cobertura</span>
+                  <span className="text-3xl font-extrabold">{coberturaPct != null ? `${coberturaPct}%` : "--"}</span>
+                </div>
 
-.btn-ghost:hover { 
-  background: rgba(255,255,255,0.05);
-  transform: scale(1.03);
-}
+                <div className="col-span-1 md:col-span-2 flex flex-col gap-1">
+                  <span className="text-[12px] tracking-widest uppercase text-slate-400">Tipo dominante</span>
+                  <span className="text-3xl font-extrabold">
+                    {octas?.categoria || "--"} — {labelCategoria(octas?.categoria)}
+                  </span>
+                </div>
 
-.loading {
-  text-align:center; 
-  color:#cfe7ff; 
-  padding:10px; 
-  font-weight:600;
-}
+                <div className="flex flex-col gap-1">
+                  <span className="text-[12px] tracking-widest uppercase text-slate-400">Oktas</span>
+                  <span className="text-3xl font-extrabold">{octas?.octas_predichas ?? "--"}</span>
+                </div>
 
-.sat-thumb {
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  gap:10px;
-}
+                <div className="col-span-1 md:col-span-2 flex items-center gap-6">
+                  <ConfidenceRing value={Number(octas?.confianza || 0)} size={130} stroke={12} />
+                  <div className="text-xs tracking-widest uppercase text-slate-400">
+                    Confianza <span className="font-semibold text-slate-200">({confianzaPct}%)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
 
-.sat-thumb img {
-  width: 100%;
-  max-width: 340px;
-  border-radius: 16px;
-  box-shadow: 0 12px 30px rgba(0,0,0,0.65), inset 0 0 12px rgba(0,191,255,0.2);
-  transition: transform 0.4s ease;
-}
+          </div>
+        </div>
 
-.sat-thumb img:hover {
-  transform: scale(1.02);
-}
+        {/* ===== Clima detallado (abajo, ancho completo) ===== */}
+        <div className="lg:col-span-2 rounded-2xl border border-cyan-700/40 bg-slate-800/60 backdrop-blur p-5 shadow">
+          <h2 className="text-xl font-semibold text-cyan-300 mb-3">Clima Detallado</h2>
+          <div className="grid grid-cols-2 gap-y-1 text-slate-100 text-sm">
+            <div>Temperatura:</div><div className="text-right">{clima.temp ?? "--"} °C</div>
+            <div>Sensación térmica:</div><div className="text-right">{clima.feels_like ?? "--"} °C</div>
+            <div>Humedad:</div><div className="text-right">{clima.humedad ?? "--"}%</div>
+            <div>Viento:</div><div className="text-right">{clima.viento ?? "--"} m/s</div>
+            <div>Dirección del viento:</div><div className="text-right">{clima.viento_dir ?? "--"}°</div>
+            <div>Presión atmosférica:</div><div className="text-right">{clima.presion ?? "--"} hPa</div>
+          </div>
+        </div>
 
-.sat-caption {
-  font-size:13px;
-  color:#a0b7d6;
-  text-align:center;
-  margin-top:8px;
-}
+        {/* ===== Satélite / Radar (abajo, ancho completo) ===== */}
+        <div className="lg:col-span-2 rounded-2xl bg-gradient-to-br from-[#0c0f14]/90 to-[#131821]/90 p-5 shadow-[0_10px_28px_rgba(0,0,0,.65)]">
+          <h3 className="text-lg font-semibold text-cyan-300 mb-3">🛰️ Satélite / Radar</h3>
 
-.hint {
-  color:#9fb6d6;
-  text-align:center;
-  padding:8px;
-  font-size:14px;
-  font-style: italic;
-}
+          <div className="relative rounded-xl overflow-hidden border border-cyan-300/10 bg-[radial-gradient(1200px_400px_at_10%_0,rgba(0,255,255,.08),transparent_40%)]">
+            {satImgUrl ? (
+              <img src={satImgUrl} alt="Radar" className="h-56 w-full object-cover" />
+            ) : (
+              <div className="h-56 w-full grid place-items-center text-[11px] tracking-[.2em] text-cyan-100/80">
+                RADAR PREVIEW — tocá “Ver Nubes”
+              </div>
+            )}
+            <div className="absolute left-2 top-2 rounded-md border border-white/10 bg-black/50 px-2 py-1 text-[11px] tracking-widest text-cyan-100 backdrop-blur">
+              RADAR PREVIEW
+            </div>
+          </div>
 
-/* detalles de clima alto riesgo */
-.weather-panel.high-nubosidad { border: 2px solid #00bfff; }
-.weather-panel.high-viento { border: 2px solid #ff5a5a; }
+          <div className="mt-3 flex justify-center gap-3">
+            <button
+              className="rounded-lg bg-gradient-to-br from-sky-600 to-sky-700 px-4 py-2 font-bold shadow hover:scale-[1.02] transition disabled:opacity-60"
+              onClick={() => fetchSatellite("clouds_new")}
+              disabled={loadingSat}
+            >
+              {loadingSat ? "Cargando..." : "Ver Nubes"}
+            </button>
+          </div>
+
+          <p className="mt-2 text-center text-sm text-slate-300/80 italic">
+            Presioná “Ver Nubes” para actualizar la imagen satelital.
+          </p>
+        </div>
+
+      </div>
+
+      {/* ===== Dashboard analítico ===== */}
+      <div className="max-w-7xl mx-auto px-6 mt-16">
+        <h2 className="text-2xl font-semibold text-center text-cyan-400 mb-6 tracking-wide">
+          <span className="mr-2" role="img" aria-label="chart">📈</span>
+          Analíticas de Nubosidad – Evolución y Comportamiento
+        </h2>
+        <Dashboard />
+      </div>
+    </div>
+  );
+}
