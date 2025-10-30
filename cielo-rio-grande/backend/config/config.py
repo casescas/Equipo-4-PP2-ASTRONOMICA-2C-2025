@@ -3,7 +3,7 @@ import os
 APP_ENV = os.getenv("APP_ENV", "dev")
 TZ = os.getenv("TZ", "America/Argentina/Buenos_Aires")
 DB_FILE = os.getenv("DB_FILE", "./data/registros-octas.db")
-OCTAS_MODEL_PATH = os.getenv("OCTAS_MODEL_PATH", "models/600EPOC_modelo_octa.h5")
+OCTAS_MODEL_PATH = os.getenv("OCTAS_MODEL_PATH", "models/mejor_modelo_efficientnet_finetuning.pth")
 
 IMG_URL_BASE = os.getenv(
     "IMG_URL_BASE", "http://201.251.63.225/meteorologia/cielo/image/"

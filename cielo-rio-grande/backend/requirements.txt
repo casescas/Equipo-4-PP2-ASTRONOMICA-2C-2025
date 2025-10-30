@@ -11,3 +11,9 @@ typing_extensions
 apscheduler
 pytz
 pydantic-settings
+torch
+torchvision
+torchaudio
+pandas
+matplotlib
+scikit-learn

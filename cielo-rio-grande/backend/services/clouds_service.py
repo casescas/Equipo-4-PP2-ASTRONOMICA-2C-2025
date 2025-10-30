@@ -1,27 +1,35 @@
-# app/services/cloud_services.py
+# app/services/clouds_service.py
 from __future__ import annotations
 import sqlite3
 from datetime import date, datetime, time
 from typing import Any, Dict, List, Optional, Tuple
 from pytz import timezone
 import numpy as np
-from tensorflow.keras.models import load_model
+import torch
+from PIL import Image
+from torchvision import transforms
 from utils.image_utils import filename_from_url, fecha_captura_from_filename
-from utils.clouds_utils import preprocess_image_rgb224, classify_octas
+from utils.clouds_utils import classify_octas
 from config.config import OCTAS_MODEL_PATH, DB_FILE, TZ
 import os
+import io
 
+# --- Carga del modelo PyTorch ---
 _model = None
+_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 def _get_model():
     global _model
     if _model is None:
-        _model = load_model(OCTAS_MODEL_PATH)
-        print(f"✅ Modelo de octas cargado: {OCTAS_MODEL_PATH}")
+        print(f"🧠 Cargando modelo PyTorch desde: {OCTAS_MODEL_PATH}")
+        _model = torch.load(OCTAS_MODEL_PATH, map_location=_device)
+        _model.eval()
+        print("✅ Modelo cargado correctamente.")
     return _model
 
 
+# --- Conexión a la base de datos ---
 def _conn():
     conn = sqlite3.connect(DB_FILE, check_same_thread=False)
     conn.row_factory = sqlite3.Row
@@ -41,6 +49,7 @@ def _day_bounds(d: date) -> Tuple[str, str]:
     return start, end
 
 
+# --- Servicios de consulta ---
 def get_last_predict_service() -> List[Dict[str, Any]]:
     conn = _conn()
     try:
@@ -95,6 +104,7 @@ def get_historial_service(
     }
 
 
+# --- Guardado de predicción ---
 def save_prediction(datos: Dict[str, Any]) -> bool:
     url = datos["imagen"]
     filename = filename_from_url(url)
@@ -142,12 +152,29 @@ def save_prediction(datos: Dict[str, Any]) -> bool:
             conn.close()
 
 
+# --- Predicción con PyTorch ---
 def predict_octas(image_bytes: bytes) -> Dict[str, Any]:
-    arr = preprocess_image_rgb224(image_bytes)
+    # Preprocesamiento de imagen
+    transform = transforms.Compose([
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+        transforms.Normalize(
+            mean=[0.485, 0.456, 0.406],
+            std=[0.229, 0.224, 0.225]
+        )
+    ])
+
+    image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+    img_tensor = transform(image).unsqueeze(0).to(_device)
+
     model = _get_model()
-    pred = model.predict(arr, verbose=0)
-    clase = int(np.argmax(pred))
-    conf = float(pred[0][clase])
+
+    with torch.no_grad():
+        outputs = model(img_tensor)
+        probs = torch.nn.functional.softmax(outputs, dim=1)
+        clase = int(torch.argmax(probs, dim=1).item())
+        conf = float(torch.max(probs).item())
+
     codigo, descripcion = classify_octas(clase)
 
     return {

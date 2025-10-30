@@ -122,15 +122,17 @@ function WeatherDetails({ clima }) {
       <h3 className="text-xl font-semibold text-cyan-300 mb-3">Clima Detallado</h3>
       <div className="text-sm">
         <Row k="Temperatura:" v={clima?.temp} suf=" °C" />
-        <Row k="Sensación térmica:" v={clima?.feels_like} suf=" °C" />
+        <Row k="Sensación térmica:" v={clima?.sensacion_termica} suf=" °C" />
         <Row k="Humedad:" v={clima?.humedad} suf="%" />
-        <Row k="Viento:" v={clima?.viento} suf=" m/s" />
-        <Row k="Dirección del viento:" v={clima?.viento_dir} suf="°" />
+        <Row k="Viento:" v={clima?.viento_velocidad} suf=" m/s" />
+        <Row k="Dirección del viento:" v={clima?.viento_direccion} suf="°" />
         <Row k="Presión atmosférica:" v={clima?.presion} suf=" hPa" />
+        <Row k="Descripción:" v={clima?.descripcion} />
       </div>
     </>
   );
 }
+
 
 /* ================ App ====================== */
 export default function App() {
@@ -254,7 +256,7 @@ export default function App() {
 
               {/* Etiqueta técnica */}
               <p className="text-[11px] text-slate-400/80">
-                Modelo: <span className="text-slate-300">600EPOC — CNN (Keras)</span> · Inferencia local
+                Modelo: <span className="text-slate-300">EfficientNet_B0</span> · Inferencia local
               </p>
             </div>
           </div>

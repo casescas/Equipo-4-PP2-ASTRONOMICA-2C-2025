@@ -19,8 +19,11 @@ def get_weather() -> dict:
 
         return {
             "temp": data["main"]["temp"],
+            "sensacion_termica": data["main"]["feels_like"],
             "humedad": data["main"]["humidity"],
-            "viento": data["wind"]["speed"],
+            "presion": data["main"]["pressure"],
+            "viento_velocidad": data["wind"]["speed"],
+            "viento_direccion": data["wind"].get("deg", None),
             "nubosidad_api": data["clouds"]["all"],
             "descripcion": data["weather"][0]["description"].capitalize(),
         }
