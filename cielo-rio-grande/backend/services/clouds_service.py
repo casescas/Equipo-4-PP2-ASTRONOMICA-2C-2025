@@ -8,6 +8,8 @@ import numpy as np
 import torch
 from PIL import Image
 from torchvision import transforms
+from torchvision.models import efficientnet_b0
+import torch.nn as nn
 from utils.image_utils import filename_from_url, fecha_captura_from_filename
 from utils.clouds_utils import classify_octas
 from config.config import OCTAS_MODEL_PATH, DB_FILE, TZ
@@ -20,12 +22,35 @@ _device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 def _get_model():
+    """
+    Carga el modelo EfficientNet_B0 + pesos personalizados.
+    """
+
     global _model
     if _model is None:
         print(f"🧠 Cargando modelo PyTorch desde: {OCTAS_MODEL_PATH}")
-        _model = torch.load(OCTAS_MODEL_PATH, map_location=_device)
+
+        # 1) reconstruir arquitectura EXACTA
+        model = efficientnet_b0(weights=None)
+
+        # 2) reemplazar la capa final (ajustar si tu modelo usa otro número)
+        model.classifier[1] = nn.Linear(model.classifier[1].in_features, 9)
+
+        # 3) cargar pesos entrenados
+        state_dict = torch.load(OCTAS_MODEL_PATH, map_location=_device)
+
+        # si los pesos vienen de un modelo con DataParallel
+        if "module." in list(state_dict.keys())[0]:
+            state_dict = {k.replace("module.", ""): v for k, v in state_dict.items()}
+
+        model.load_state_dict(state_dict, strict=False)
+
+        # 4) mover a device y poner en eval
+        _model = model.to(_device)
         _model.eval()
+
         print("✅ Modelo cargado correctamente.")
+
     return _model
 
 
