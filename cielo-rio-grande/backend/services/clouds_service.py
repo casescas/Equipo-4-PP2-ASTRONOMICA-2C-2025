@@ -82,7 +82,7 @@ def get_last_predict_service() -> List[Dict[str, Any]]:
             """
             SELECT *
             FROM registro_historico
-            ORDER BY datetime(fecha_captura) DESC
+            ORDER BY datetime(created_at) DESC
             LIMIT 1
             """
         )

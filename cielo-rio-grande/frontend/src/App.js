@@ -192,16 +192,23 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#05060a] to-[#0a0c13] text-white pb-16 font-sans">
       {/* Título principal */}
-      <header className="py-6">
-        <h1 className="text-center text-4xl lg:text-6xl font-extrabold tracking-tight text-balance">
-          <span className="bg-gradient-to-r from-cyan-400 via-blue-300 to-violet-400 bg-clip-text text-transparent">
-            ☁️ Nubosidad Río Grande
-          </span>
-        </h1>
-        <p className="mt-2 text-center text-sm text-slate-400">
-          Actualizado: {new Date(timestamp).toLocaleTimeString("es-AR")}
-        </p>
-      </header>
+      <header className="py-6 relative">
+  <img
+    src="/poli.png"
+    alt="Logo organización"
+    className="w-14 h-14 absolute top-4 right-4 opacity-80"
+  />
+
+  <h1 className="text-center text-4xl lg:text-6xl font-extrabold tracking-tight text-balance">
+    <span className="bg-gradient-to-r from-cyan-400 via-blue-300 to-violet-400 bg-clip-text text-transparent">
+      ☁️ Nubosidad Río Grande
+    </span>
+  </h1>
+  <p className="mt-2 text-center text-sm text-slate-400">
+    Actualizado: {new Date(timestamp).toLocaleTimeString("es-AR")}
+  </p>
+</header>
+
 
       <main className="max-w-7xl mx-auto px-4 space-y-8">
         {/* ===== Tarjeta Cámara + Métricas ===== */}
