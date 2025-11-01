@@ -193,11 +193,6 @@ export default function App() {
     <div className="min-h-screen bg-gradient-to-br from-[#05060a] to-[#0a0c13] text-white pb-16 font-sans">
       {/* Título principal */}
       <header className="py-6 relative">
-  <img
-    src="/poli.png"
-    alt="Logo organización"
-    className="w-14 h-14 absolute top-4 right-4 opacity-80"
-  />
 
   <h1 className="text-center text-4xl lg:text-6xl font-extrabold tracking-tight text-balance">
     <span className="bg-gradient-to-r from-cyan-400 via-blue-300 to-violet-400 bg-clip-text text-transparent">
@@ -322,7 +317,25 @@ export default function App() {
           </h3>
            <Dashboard />
         </section>
-      </main>
+            </main>
+
+      {/* === Footer Institucional === */}
+      <footer
+        className="fixed bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-3
+                   bg-black/30 backdrop-blur-sm px-4 py-2 rounded-full border border-white/10 
+                   shadow-[0_4px_12px_rgba(0,0,0,.45)]"
+      >
+        <img
+          src="/poli.png"
+          alt="Logo Institucional"
+          className="w-8 h-8 object-contain opacity-90"
+        />
+        <span className="text-slate-300 text-xs tracking-widest uppercase font-semibold">
+          Centro Politécnico Superior Malvinas Argentinas
+        </span>
+      </footer>
+
     </div>
   );
 }
+
