@@ -22,9 +22,16 @@ function groupDaily(rows) {
   return Array.from(map.entries())
     .map(([ymd, list]) => {
       const octasArr = list.map(x => Number(x.octas || 0));
+      const confArr = list
+        .map(x => Number(x.confianza ?? x.confidence ?? x.score ?? x.probabilidad))
+        .filter(Number.isFinite);
+
       const count = list.length || 0;
       const sumOctas = octasArr.reduce((a,b)=>a+b,0);
       const avg = count ? Number((sumOctas / count).toFixed(2)) : 0;
+
+      const confAvgRaw = confArr.length ? confArr.reduce((a,b)=>a+b,0) / confArr.length : 0;
+      const confPct = confAvgRaw <= 1 ? Math.round(confAvgRaw * 100) : Math.round(confAvgRaw);
 
       const catDom = mode(list.map(x => x.categoria || "N/D"));
       const descDom = mode(list.map(x => (x.descripcion || "").trim() || "—"));
@@ -38,6 +45,7 @@ function groupDaily(rows) {
         pct: count ? Number(((avg / 8) * 100).toFixed(0)) : 0, // % de nubosidad promedio
         catDom,
         descDom,
+        confPct,
       };
     })
     .sort((a,b) => a.ymd.localeCompare(b.ymd));
@@ -83,6 +91,7 @@ export default function TablaPromediosDiarios({ rows, onPickDay }) {
               <th className="text-left p-2">Fecha</th>
               <th className="text-right p-2">Prom. octas</th>
               <th className="text-right p-2">% Nubosidad</th>
+              <th className="text-right p-2">Conf. prom.</th>
               <th className="text-right p-2">Mín</th>
               <th className="text-right p-2">Máx</th>
               <th className="text-left p-2">Cat. dominante</th>
@@ -97,6 +106,7 @@ export default function TablaPromediosDiarios({ rows, onPickDay }) {
                 <td className="p-2">{d.ymd}</td>
                 <td className="p-2 text-right">{d.avg}</td>
                 <td className="p-2 text-right">{d.pct}%</td>
+                <td className="p-2 text-right">{d.confPct}%</td>
                 <td className="p-2 text-right">{d.min}</td>
                 <td className="p-2 text-right">{d.max}</td>
                 <td className="p-2">{d.catDom}</td>
@@ -114,7 +124,7 @@ export default function TablaPromediosDiarios({ rows, onPickDay }) {
             ))}
             {!days.length && (
               <tr>
-                <td className="p-3 text-gray-400" colSpan={9}>
+                <td className="p-3 text-gray-400" colSpan={10}>
                   Sin datos para el rango seleccionado.
                 </td>
               </tr>

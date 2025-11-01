@@ -1,128 +1,143 @@
-# Backfill de Octas — Guía de Uso
+# 🌥️ Flujo y Backfill — Guía de Uso
 
-Este documento explica cómo ejecutar el **backfill de datos de octas** a partir de las imágenes públicas del servidor meteorológico, utilizando el modelo de predicción y la base de datos local.
+Este documento describe el funcionamiento general del sistema de clasificación automática de nubes y explica cómo ejecutar el proceso de backfill histórico.
 
----
+El sistema obtiene imágenes públicas del cielo desde un servidor meteorológico, las procesa con un modelo de IA y almacena los resultados en una base de datos local.
 
-## 🧩 ¿Qué hace el backfill?
+# ⚙️ Flujo general
 
-- Obtiene las imágenes de cielo en intervalos de 10 minutos.
-- Clasifica la cantidad de nubes usando un **modelo de IA** (`600EPOC_modelo_octa.h5`).
-- Genera un registro histórico en **SQLite**, guardando:
-  - `fecha_hora_prediccion`
-  - `octas_predichas`
-  - `confianza`
-  - `categoria` (SKC, FEW, SCT, BKN, OVC)
-  - `descripcion`
-  - `url_imagen`
+El sistema procesa imágenes del cielo capturadas periódicamente por la cámara instalada en el observatorio.
 
----
+Cada imagen pasa por un pipeline automatizado que se ejecuta cada 10 minutos y realiza tres tareas principales:
 
-## 📁 Estructura esperada del proyecto
+1. Obtiene la nueva imagen desde la fuente configurada (IMG_URL_BASE).
 
-backend/
-├─ backfill.py
-├─ database.py
-├─ registros-octas.db ← se crea automáticamente
-└─ models/
-└─ 600EPOC_modelo_octa.h5
+2. Procesa la imagen con el modelo de clasificación de nubes (predict_octas).
+
+3. Almacena el resultado en la base de datos local (registros-octas.db): 
 
 
+El scheduler (`jobs/scheduler.py`) utiliza APScheduler para ejecutar este flujo de forma continua, garantizando la actualización de datos en tiempo real y alimentando el dashboard analítico.
 
-# ⚙️ Configuración relevante en backfill.py
-IMG_URL_BASE = "http://201.251.63.225/meteorologia/cielo/image/"
-MODEL_PATH = "models/600EPOC_modelo_octa.h5"
+# 🧩 Modos de funcionamiento
 
-# Pausa entre requests (anti-baneo)
-REQUEST_SLEEP_SECONDS = 0.25
-TIP:
+El sistema opera en dos modos complementarios:
 
-  - 0.25 = rápido + estable
-  -  0.5 = más seguro
-  -  0 = máximo rendimiento, pero posible rate-limit
-  
-# 🧠 Bases del funcionamiento
-Las imágenes están dentro de carpetas por año:
+| Modo                     | Descripción                                                                                                   | Frecuencia              |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| **Trigger (automático)** | Obtiene la última imagen disponible cada 10 minutos, la procesa con el modelo y guarda el resultado.          | Permanente              |
+| **Backfill (histórico)** | Recorre un rango de fechas pasado y obtiene las imágenes correspondientes para generar el registro histórico. | Eventual / bajo demanda |
+
+# 🧠 Backfill (backfill.py)
+
+El backfill es un proceso independiente del trigger automático.
+
+Su finalidad es reconstruir el historial de predicciones sobre un rango de fechas determinado, utilizando la misma lógica del pipeline principal.
+
+# Funcionamiento
+
+El backfill recorre el rango [--desde, --hasta] en pasos horarios.
+
+Dentro de cada hora obtiene 6 imágenes fijas, correspondientes a los minutos válidos:
+
+`MINUTOS_VALIDOS = [2, 12, 22, 32, 42, 52]`
+
+
+Para cada intento:
+
+- Construye la URL con `image_url`(`IMG_URL_BASE`, `intento`, `minuto`, `with_year_dir=True`).
+
+- Obtiene la imagen desde el servidor público.
+
+- La procesa con predict_octas(resp.content).
+
+- Guarda el resultado con save_prediction(data).
+
+El script muestra al finalizar un resumen con la cantidad total de imágenes procesadas, duplicadas y fallidas.
+
+## Ejemplo de ejecución
+``` bash
+python -m backfill --desde "2025-01-01T00:00" --hasta "2025-01-31T23:59"
+```
+
+Salida esperada:
+``` bash
+📊 Backfill → total=864 | nuevos=830 | duplicados=28 | fallidos=6
+```
+## Validaciones y tolerancia a fallos
+
+- Si --hasta es menor que --desde, el proceso finaliza con error.
+
+- Los errores de red o imágenes ausentes se contabilizan como fallidos (miss).
+
+- El proceso es idempotente: no repite registros ya existentes.
+
+- Implementa reintentos automáticos (Retry(total=2)) ante errores HTTP (408, 500, 502, 503, 504).
+
+## 🗂️ Estructura del servidor de imágenes
+
+El servidor organiza las imágenes por año.
+
+El backfill usa el `flag with_year_dir=True` para incluir la carpeta del año correspondiente.
 
 /meteorologia/cielo/image/<AÑO>/<YYYY>-<MMDDHH><mm>.jpg
 
-Ejemplo real:
+
+**Ejemplo:**
 
 /meteorologia/cielo/image/2025/2025-01010002.jpg
 
-# 🚀 Cómo ejecutar el Backfill
 
-1) Rango definido
-   
-python backfill.py `
-  --desde "2025-01-01T00:00" `
-  --hasta "2025-01-31T23:59" `
-  --step-min 10 `
+Las ejecuciones del pipeline continuo no requieren esta estructura, ya que operan sobre el año actual (`with_year_dir=False`).
 
-1) Últimos 3 días automáticamente
-python backfill.py `
-  --desde "$( (Get-Date).AddDays(-3).ToString('yyyy-MM-ddTHH:mm') )" `
-  --hasta "$(Get-Date -Format 'yyyy-MM-ddTHH:mm')" `
-  --step-min 10 `
+##  Ejemplos de ejecución
+🔹 **Backfill del año actual (2025)**
 
-1) Desde enero de 2024 hasta ahora (lo más usado)
+En este caso las imágenes se encuentran en la raíz del servidor (sin carpeta por año).
 
-python -m backfill --desde 2024-01-01T00:00 --hasta "$(date +%Y-%m-%dT%H:%M)"
+```bash
+python -m backfill --desde "2025-01-01T00:00" --hasta "2025-01-31T23:59"
+```
 
+Salida esperada:
+```bash
+📊 Backfill → total=864 | nuevos=830 | duplicados=28 | fallidos=6
+```
+🔹 **Backfill de un año anterior (2024)**
 
-# 💾 Modos de escritura
+Para años anteriores las imágenes están dentro de una carpeta con el año correspondiente, por lo que el script usa `with_year_dir=True` automáticamente.
+```bash
+python -m backfill --desde "2024-01-01T00:00" --hasta "2024-12-31T23:59"
+```
 
-| Modo            | Descripción                                                   |
-| --------------- | ------------------------------------------------------------- |
-| `forzar`        | **UPSERT** → actualiza valores si ya existen (recomendado)    |
-| `respetar_hora` | Solo inserta si no existe el registro (no pisa datos previos) |
+**Ejemplo de ruta accedida:**
 
+http://201.251.63.225/meteorologia/cielo/image/2024/2024-01010002.jpg
 
-# ⏱️ Rendimiento
+🔹 **Backfill desde enero 2024 hasta hoy**
 
-| Pausa (`REQUEST_SLEEP_SECONDS`) | Velocidad  | Riesgo                       |
-| ------------------------------- | ---------- | ---------------------------- |
-| `1.0`                           | lento      | muy seguro                   |
-| `0.5`                           | estable    | seguro                       |
-| `0.25`                          | rápido     | recomendado ✅                |
-| `0.10`                          | muy rápido | riesgo moderado ⚠️           |
-| `0.0`                           | máximo     | **riesgo alto de bloqueo** ❌ |
+Combina ambos casos: empieza en la carpeta de 2024 y continúa con imágenes del año actual.
+```bash
+python -m backfill --desde "2024-01-01T00:00" --hasta "$(date +%Y-%m-%dT%H:%M)"
+```
+## 🧯 Solución de problemas
 
+| Situación                              | Causa                                      | Solución                                               |
+| -------------------------------------- | ------------------------------------------ | ------------------------------------------------------ |
+| `ValueError: Invalid isoformat string` | Formato de fecha incorrecto                | Usar `"YYYY-MM-DDTHH:MM"`                              |
+| 404 en todas las imágenes              | Carpeta de año omitida                     | Verificar que el backfill incluya `with_year_dir=True` |
+| La base no se actualiza                | Imágenes ya procesadas                     | Es comportamiento esperado                             |
+| Muchas fallidas                        | Rango de fechas muy grande o red inestable | Ejecutar por períodos más cortos                       |
 
-# 🧯 Solución de Problemas
+## 🧪 Atajos y comandos rápidos
 
-| Error                                  | Causa                           | Solución                                    |
-| -------------------------------------- | ------------------------------- | ------------------------------------------- |
-| `ValueError: Invalid isoformat string` | Fecha mal formada               | Usar `"YYYY-MM-DDTHH:MM"`                   |
-| 404 en todas las imágenes              | Falta carpeta de año            | Confirmar que la URL usa `/image/<AÑO>/...` |
-| Muy lento                              | Pausa muy alta / conexión lenta | Reducir `REQUEST_SLEEP_SECONDS`             |
-| Base no se actualiza                   | `DB_FILE` incorrecto            | Verificar `database.py`                     |
-
-# 🗃️ Esquema de la Tabla
-
-CREATE TABLE IF NOT EXISTS registro_historico (
-  fecha_hora_prediccion TEXT PRIMARY KEY,
-  octas_predichas INTEGER,
-  confianza REAL,
-  categoria TEXT,
-  descripcion TEXT,
-  url_imagen TEXT
-);
-
-CREATE UNIQUE INDEX IF NOT EXISTS ux_registro_historico_fecha
-  ON registro_historico(fecha_hora_prediccion);
-
-🧪 Comandos rápidos (cheatsheet)
-
-# Activar entorno
-source .venv/bin/activate         # Linux/macOS
-.venv\Scripts\Activate.ps1        # Windows PowerShell
-
-# Actualizar repo y deps
-git pull
+### Activar entorno virtual
+```bash
+source .venv/bin/activate          # Linux/macOS
+.venv\Scripts\Activate.ps1         # Windows PowerShell
+```
+### Instalar dependencias
+```bash
 pip install -r requirements.txt
-
-# Correr backfill (ejemplo)
-python backfill.py --desde "2025-01-01T00:00" --hasta "2025-01-07T23:59" --step-min 10 --modo forzar
-
+```
 

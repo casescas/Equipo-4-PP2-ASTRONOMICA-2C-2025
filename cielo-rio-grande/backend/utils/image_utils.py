@@ -20,6 +20,7 @@ def image_url(
     name = image_name(ts, minute_real)
     if with_year_dir:
         return f"{base}{ts.year}/{name}"
+    print (base, name)
     return f"{base}{name}"
 
 

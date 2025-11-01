@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   LineChart,
   Line,
@@ -8,6 +8,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { exportNodeToPdf } from "../utils/exportPdf"; // ajustá la ruta si cambia
 
 const API = "http://127.0.0.1:8000/historial";
 
@@ -23,15 +24,11 @@ function ymdOffset(days) {
 const isYMD = (s) => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s);
 const mode = (arr) => {
   const m = new Map();
-  let best = null,
-    c = 0;
+  let best = null, c = 0;
   for (const x of arr) {
     const v = (m.get(x) || 0) + 1;
     m.set(x, v);
-    if (v > c) {
-      best = x;
-      c = v;
-    }
+    if (v > c) { best = x; c = v; }
   }
   return best ?? "N/D";
 };
@@ -44,6 +41,8 @@ export default function Dashboard() {
 
   const [raw, setRaw] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  const exportRef = useRef(null);
 
   // --- Fetch ---
   useEffect(() => {
@@ -58,7 +57,12 @@ export default function Dashboard() {
           }
         } else {
           if (isYMD(desde)) url.searchParams.set("desde", desde);
-          if (isYMD(hasta)) url.searchParams.set("hasta", hasta);
+          if (isYMD(hasta)) {
+            // backend trata "hasta" como exclusivo ⇒ sumo 1 día para incluirlo
+            const d = new Date(hasta);
+            d.setDate(d.getDate() + 1);
+            url.searchParams.set("hasta", d.toISOString().slice(0, 10));
+          }
         }
 
         const res = await fetch(url.toString());
@@ -66,7 +70,6 @@ export default function Dashboard() {
         const json = await res.json();
         const items = json?.items && Array.isArray(json.items) ? json.items : [];
         setRaw(items);
-        console.log("📦 Datos recibidos:", items);
       } catch (e) {
         console.error("Error cargando historial:", e);
         setRaw([]);
@@ -139,8 +142,16 @@ export default function Dashboard() {
       return Array.from(m.entries()).map(([fecha, lista]) => {
         const octas = lista.map((x) => Number(x?.octas_predichas)).filter(Number.isFinite);
         const avg = octas.length ? octas.reduce((a, b) => a + b, 0) / octas.length : 0;
+
+        const confVals = lista
+          .map((x) => Number(x?.confianza ?? x?.confidence ?? x?.score ?? x?.probabilidad))
+          .filter(Number.isFinite);
+        const confAvg = confVals.length ? confVals.reduce((a, b) => a + b, 0) / confVals.length : 0;
+        const confPct = confAvg <= 1 ? Math.round(confAvg * 100) : Math.round(confAvg);
+
         const catDom = mode(lista.map((x) => x?.categoria || "N/D"));
         const descDom = mode(lista.map((x) => (x?.descripcion || "—").trim()));
+
         return {
           fecha,
           promedio: Number(avg.toFixed(2)),
@@ -148,6 +159,7 @@ export default function Dashboard() {
           catDom,
           descDom,
           count: lista.length,
+          confPct,
         };
       });
     };
@@ -156,8 +168,25 @@ export default function Dashboard() {
     return agrupar(raw.filter((r) => (r?.fecha_captura || "").slice(0, 10) === dia));
   }, [raw, modo, dia]);
 
+  const handleExportPdf = async () => {
+    const titulo =
+      modo === "dia"
+        ? `Analíticas de Nubosidad — Día ${dia}`
+        : `Analíticas de Nubosidad — Rango ${desde} a ${hasta}`;
+    await exportNodeToPdf({
+      node: exportRef.current,
+      filename: `Analitica_Nubosidad_${modo === "dia" ? dia : `${desde}_a_${hasta}`}.pdf`,
+      header: titulo,
+      footer: "Proyecto Cielo Río Grande • generado automáticamente",
+    });
+  };
+
   return (
-    <div className="bg-gray-800/60 rounded-2xl p-6 shadow-lg border border-cyan-800">
+    <div
+      ref={exportRef}
+      id="dashboard-export"
+      className="bg-gray-800/60 rounded-2xl p-6 shadow-lg border border-cyan-800"
+    >
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6">
         <h2 className="text-xl font-semibold text-cyan-300">
           {modo === "dia"
@@ -170,9 +199,7 @@ export default function Dashboard() {
           <div className="flex gap-2">
             <button
               className={`px-3 py-1 rounded-md text-sm ${
-                modo === "dia"
-                  ? "bg-cyan-600 hover:bg-cyan-500"
-                  : "bg-gray-700 hover:bg-gray-600"
+                modo === "dia" ? "bg-cyan-600 hover:bg-cyan-500" : "bg-gray-700 hover:bg-gray-600"
               }`}
               onClick={() => setModo("dia")}
             >
@@ -180,9 +207,7 @@ export default function Dashboard() {
             </button>
             <button
               className={`px-3 py-1 rounded-md text-sm ${
-                modo === "rango"
-                  ? "bg-cyan-600 hover:bg-cyan-500"
-                  : "bg-gray-700 hover:bg-gray-600"
+                modo === "rango" ? "bg-cyan-600 hover:bg-cyan-500" : "bg-gray-700 hover:bg-gray-600"
               }`}
               onClick={() => setModo("rango")}
             >
@@ -229,18 +254,16 @@ export default function Dashboard() {
         <div className="w-full" style={{ height: 320, minHeight: 320 }}>
           <ResponsiveContainer key={modo} width="100%" height="100%">
             {modo === "dia" ? (
-              <LineChart
-                data={serieHoras}
-                margin={{ top: 10, right: 20, left: 10, bottom: 10 }}
-              >
+              <LineChart data={serieHoras} margin={{ top: 10, right: 40, left: 10, bottom: 10 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#263244" />
                 <XAxis
                   dataKey="h"
-                  stroke="#a0b9d9"
                   type="number"
-                  domain={[0, 23]}
+                  domain={[-0.5, 23.5]}        // 👉 aire extra para que no recorte el último tick
                   ticks={Array.from({ length: 24 }, (_, i) => i)}
                   tickFormatter={(v) => `${String(v).padStart(2, "0")}:00`}
+                  stroke="#a0b9d9"
+                  tickMargin={12}
                 />
                 <YAxis
                   stroke="#a0b9d9"
@@ -255,9 +278,16 @@ export default function Dashboard() {
                 <Line type="monotone" dataKey="octasProm" stroke="#38bdf8" strokeWidth={2} dot />
               </LineChart>
             ) : (
-              <LineChart data={serieDiaria}>
+              <LineChart data={serieDiaria} margin={{ top: 10, right: 40, left: 10, bottom: 10 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#263244" />
-                <XAxis dataKey="fecha" stroke="#a0b9d9" />
+                <XAxis
+                  dataKey="fecha"
+                  stroke="#a0b9d9"
+                  interval="preserveStartEnd"  // 👉 mantiene primer y último tick
+                  tickMargin={16}               // 👉 evita que lo recorte
+                  minTickGap={8}
+                  padding={{ right: 20 }}       // 👉 aire adicional al borde derecho
+                />
                 <YAxis
                   stroke="#a0b9d9"
                   domain={[0, 8]}
@@ -285,6 +315,7 @@ export default function Dashboard() {
                 <th className="text-left py-2 px-2">Fecha</th>
                 <th className="text-right py-2 px-2">Prom. Octas</th>
                 <th className="text-right py-2 px-2">% Nubosidad</th>
+                <th className="text-right py-2 px-2">Conf. prom.</th>
                 <th className="text-left py-2 px-2">Categoría Dom.</th>
                 <th className="text-left py-2 px-2">Descripción Dom.</th>
                 <th className="text-right py-2 px-2">Registros</th>
@@ -296,6 +327,7 @@ export default function Dashboard() {
                   <td className="py-2 px-2">{r.fecha}</td>
                   <td className="text-right py-2 px-2">{r.promedio}</td>
                   <td className="text-right py-2 px-2">{r.pct}%</td>
+                  <td className="text-right py-2 px-2">{r.confPct}%</td>
                   <td className="py-2 px-2">{r.catDom}</td>
                   <td className="py-2 px-2">{r.descDom}</td>
                   <td className="text-right py-2 px-2">{r.count}</td>
@@ -303,20 +335,30 @@ export default function Dashboard() {
               ))}
               {!tablaResumen.length && !loading && (
                 <tr>
-                  <td colSpan={6} className="py-4 text-center text-gray-500">
+                  <td colSpan={7} className="py-4 text-center text-gray-500">
                     No hay datos para el período seleccionado.
                   </td>
                 </tr>
               )}
               {loading && (
                 <tr>
-                  <td colSpan={6} className="py-4 text-center text-gray-500">
+                  <td colSpan={7} className="py-4 text-center text-gray-500">
                     Cargando…
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* 📄 Botón centrado */}
+        <div className="flex justify-center mt-6">
+          <button
+            onClick={handleExportPdf}
+            className="px-4 py-2 bg-blue-600 hover:bg--500 text-white rounded-md shadow-md transition"
+          >
+            📄 Descargar PDF
+          </button>
         </div>
       </div>
     </div>
