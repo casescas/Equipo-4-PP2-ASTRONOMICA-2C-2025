@@ -1,6 +1,5 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from tensorflow.keras.models import load_model
 from apscheduler.schedulers.background import BackgroundScheduler
 from config.db_init import init_database
 import uvicorn
@@ -48,4 +47,4 @@ def home():
 
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)
