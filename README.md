@@ -58,8 +58,6 @@ Estructura/
 
 ├── 📁 models/               # Modelos entrenados (archivos .pkl, .h5, etc.)
 
-│
-
 ├── requirements.txt        # Dependencias del proyecto
 
 ├── README.md               # Descripción general del proyecto
