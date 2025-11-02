@@ -1,6 +1,6 @@
 # 🚀 Guía de Uso — Cielo Río Grande
 
-Esta guía explica cómo **descargar, instalar y ejecutar** el proyecto **Cielo Río Grande**, levantar la API y acceder al dashboard de visualización.
+Esta guía explica cómo **obtener, instalar y ejecutar** el proyecto **Cielo Río Grande**, levantar la API y acceder al dashboard de visualización.
 
 ---
 
@@ -52,21 +52,40 @@ git pull
 
 💡 El frontend muestra las predicciones, gráficos y reportes generados por el modelo.
 
-1. Instalar dependencias e iniciar el dashboard:
+1. 🚀 Levantar frontend del proyecto
 
-   ```bash
-   cd ../frontend
-   npm install
-   npm start
-   ```
 
-2. Abrí el dashboard en tu navegador:  
+Paso previo: instalación de Node.js y npm
+
+Antes de continuar, asegurate de tener instalados **Node.js** (versión 16 o superior) y **npm**.  
+Podés verificarlo ejecutando:
+
+```bash
+node -v
+npm -v
+```
+Pasos
+
+```bash
+# Entrar al directorio del frontend
+cd ../frontend          
+```
+```bash
+# Instalar dependencias 
+ npm install   
+```
+```bash
+# Iniciar el servidor de desarrollo
+npm run start           
+```
+
+1. Abrilo en tu navegador:  
    👉 [http://localhost:3000](http://localhost:3000)
 
-3. Desde allí podrás:  
-   - 📊 Visualizar la evolución de nubosidad  
-   - 📅 Filtrar por rango de fechas  
-   - 🧾 Exportar reportes en PDF
+2. Desde ahí podrás:  
+      - 📊 Visualizar la evolución de nubosidad  
+      - 📅 Filtrar por rango de fechas  
+      - 🧾 Exportar reportes en PDF
 
 ---
 

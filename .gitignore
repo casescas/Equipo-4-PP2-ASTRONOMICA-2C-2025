@@ -6,4 +6,4 @@ __pycache__
 site
 /cielo-rio-grande/backend/data/
 registros-octas.db
-registros-octas.db-wal
+registros-octas.db*

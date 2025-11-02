@@ -57,7 +57,7 @@ Por cada imagen:
 
 1. Se genera la URL mediante `image_url(IMG_URL_BASE, intento, minuto, with_year_dir=True)`.
 
-2. Se descarga la imagen con una sesión HTTP configurada con reintentos automáticos (`_new_session()` usa `Retry` y `HTTPAdapter`).
+2. Se obtiene la imagen con una sesión HTTP configurada con reintentos automáticos (`_new_session()` usa `Retry` y `HTTPAdapter`).
 
 3. Se clasifica la imagen con `predict_octas(resp.content)`.
 

@@ -89,7 +89,7 @@ El entrenamiento se detuvo en la **época 80** mediante *Early Stopping*, mostra
 El pipeline procesa imágenes capturadas por la **EARG** cada 10 minutos mediante un *scheduler APScheduler*.
 
 Pasos principales:
-1. Descarga de la imagen (`utils.image_utils`)
+1. Obtiene de la imagen (`utils.image_utils`)
 2. Clasificación con `predict_octas()`
 3. Registro en **SQLite** (`data/registros-octas.db`)
 

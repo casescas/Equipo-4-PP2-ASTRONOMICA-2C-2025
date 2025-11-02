@@ -1,8 +1,9 @@
 # app/services/clouds_service.py
 from __future__ import annotations
 import sqlite3
-from datetime import date, datetime, time
-from typing import Any, Dict, List, Optional, Tuple
+import time
+from datetime import date, datetime, time as dtime
+from typing import Any, Dict, List, Optional, Tuple, Set
 from pytz import timezone
 import numpy as np
 import torch
@@ -25,7 +26,6 @@ def _get_model():
     """
     Carga el modelo EfficientNet_B0 + pesos personalizados.
     """
-
     global _model
     if _model is None:
         print(f"🧠 Cargando modelo PyTorch desde: {OCTAS_MODEL_PATH}")
@@ -54,10 +54,15 @@ def _get_model():
     return _model
 
 
-# --- Conexión a la base de datos ---
+# --- Conexión a la base de datos (robusta para alta concurrencia) ---
 def _conn():
-    conn = sqlite3.connect(DB_FILE, check_same_thread=False)
+    # timeout: cuánto esperar si la DB está ocupada
+    conn = sqlite3.connect(DB_FILE, check_same_thread=False, timeout=30.0)
     conn.row_factory = sqlite3.Row
+    # Mejoras de concurrencia y rendimiento
+    conn.execute("PRAGMA journal_mode=WAL;")
+    conn.execute("PRAGMA synchronous=NORMAL;")
+    conn.execute("PRAGMA busy_timeout=5000;")  # 5s de espera en locks
     return conn
 
 
@@ -69,8 +74,8 @@ def _now_local_iso_minutes() -> str:
 
 
 def _day_bounds(d: date) -> Tuple[str, str]:
-    start = datetime.combine(d, time.min).isoformat()
-    end = datetime.combine(d, time.max).isoformat()
+    start = datetime.combine(d, dtime.min).isoformat()
+    end = datetime.combine(d, dtime.max).isoformat()
     return start, end
 
 
@@ -129,7 +134,7 @@ def get_historial_service(
     }
 
 
-# --- Guardado de predicción ---
+# --- Guardado de predicción (con retry si la DB está bloqueada) ---
 def save_prediction(datos: Dict[str, Any]) -> bool:
     url = datos["imagen"]
     filename = filename_from_url(url)
@@ -139,26 +144,36 @@ def save_prediction(datos: Dict[str, Any]) -> bool:
     conn = None
     try:
         conn = _conn()
-        cur = conn.execute(
-            """
-            INSERT OR IGNORE INTO registro_historico
-                (filename, url_imagen, fecha_captura,
-                 octas_predichas, confianza, categoria, descripcion, modelo_version, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                filename,
-                url,
-                fecha_captura,
-                int(datos["octas_predichas"]),
-                float(datos["confianza"]),
-                str(datos["categoria"]),
-                datos.get("descripcion"),
-                datos.get("modelo_version"),
-                _now_local_iso_minutes(),
-            ),
-        )
-        conn.commit()
+        for attempt in range(6):  # pequeños reintentos (≈ 0.9s total máx)
+            try:
+                cur = conn.execute(
+                    """
+                    INSERT OR IGNORE INTO registro_historico
+                        (filename, url_imagen, fecha_captura,
+                         octas_predichas, confianza, categoria, descripcion, modelo_version, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        filename,
+                        url,
+                        fecha_captura,
+                        int(datos["octas_predichas"]),
+                        float(datos["confianza"]),
+                        str(datos["categoria"]),
+                        datos.get("descripcion"),
+                        datos.get("modelo_version"),
+                        _now_local_iso_minutes(),
+                    ),
+                )
+                conn.commit()
+                break
+            except sqlite3.OperationalError as e:
+                # Manejo de locks (database is locked)
+                if "locked" in str(e).lower():
+                    time.sleep(0.05 * (attempt + 1))  # 50ms, 100ms, ...
+                    continue
+                raise
+
         if cur.rowcount == 0:
             print(f"{filename} ya existía, omitido.")
             return False
@@ -179,6 +194,10 @@ def save_prediction(datos: Dict[str, Any]) -> bool:
 
 # --- Predicción con PyTorch ---
 def predict_octas(image_bytes: bytes) -> Dict[str, Any]:
+    # Permite cargar imágenes parcialmente truncadas sin romper el flujo
+    from PIL import ImageFile
+    ImageFile.LOAD_TRUNCATED_IMAGES = True
+
     # Preprocesamiento de imagen
     transform = transforms.Compose([
         transforms.Resize((224, 224)),
@@ -189,17 +208,27 @@ def predict_octas(image_bytes: bytes) -> Dict[str, Any]:
         )
     ])
 
-    image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+    try:
+        # Cargar imagen en memoria y convertir a RGB
+        image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+    except Exception as e:
+        print(f"⚠️  Imagen inválida/truncada no recuperable: {e}")
+        raise
+
+    # Transformar la imagen para el modelo
     img_tensor = transform(image).unsqueeze(0).to(_device)
 
+    # Obtener el modelo cargado (en memoria global)
     model = _get_model()
 
+    # Inferencia sin gradientes
     with torch.no_grad():
         outputs = model(img_tensor)
         probs = torch.nn.functional.softmax(outputs, dim=1)
         clase = int(torch.argmax(probs, dim=1).item())
         conf = float(torch.max(probs).item())
 
+    # Interpretar resultado según sistema OCTAS
     codigo, descripcion = classify_octas(clase)
 
     return {
@@ -210,6 +239,7 @@ def predict_octas(image_bytes: bytes) -> Dict[str, Any]:
         "modelo_version": os.path.basename(OCTAS_MODEL_PATH),
     }
 
+
 def exists_record_by_filename(filename: str) -> bool:
     conn = _conn()
     try:
@@ -219,5 +249,27 @@ def exists_record_by_filename(filename: str) -> bool:
         )
         print("Skipeando prediccion, ya existe")
         return cur.fetchone() is not None
+    finally:
+        conn.close()
+
+
+# --- Pre-skip masivo para backfill ---
+def get_existing_filenames(desde: datetime, hasta: datetime) -> Set[str]:
+    """
+    Devuelve un set con todos los filenames existentes entre 'desde' y 'hasta'.
+    Mejora el rendimiento del backfill al evitar consultas una por una.
+    """
+    conn = _conn()
+    try:
+        cur = conn.execute(
+            """
+            SELECT filename
+            FROM registro_historico
+            WHERE fecha_captura BETWEEN ? AND ?
+            """,
+            (desde.isoformat(), hasta.isoformat()),
+        )
+        rows = cur.fetchall()
+        return {r[0] for r in rows}
     finally:
         conn.close()
