@@ -2,6 +2,7 @@ venv
 .env
 .venv
 __pycache__
-registros-octas.db
 /__pycache__
 site
+/cielo-rio-grande/backend/data
+registros-octas.db
