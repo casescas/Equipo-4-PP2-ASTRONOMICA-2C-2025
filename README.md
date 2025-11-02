@@ -127,4 +127,4 @@ Desarrollado por el **Equipo 4 – PP2 Astronómica (2C 2025)**
 para la **Tecnicatura Superior en Ciencia de Datos e Inteligencia Artificial** del **Politécnico Malvinas Argentinas**,  
 en colaboración con la **Estación Astronómica de Río Grande (EARG)**.
 
-![alt text](./assets/footer_politecnico.png)
+![alt text](./06.Docs/assets)
