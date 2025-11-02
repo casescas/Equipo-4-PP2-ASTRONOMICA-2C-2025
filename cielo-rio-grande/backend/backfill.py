@@ -4,8 +4,8 @@ from datetime import datetime, timedelta
 import requests
 from urllib3.util.retry import Retry
 from requests.adapters import HTTPAdapter
-from utils.image_utils import image_url
-from services.clouds_service import save_prediction, predict_octas
+from utils.image_utils import image_url, filename_from_url
+from services.clouds_service import save_prediction, predict_octas, exists_record_by_filename
 from config.config import IMG_URL_BASE
 
 MINUTOS_VALIDOS = [2, 12, 22, 32, 42, 52]
@@ -32,7 +32,7 @@ def backfill(desde: datetime, hasta: datetime):
         raise SystemExit("`--hasta` debe ser >= `--desde`.")
 
     session = _new_session()
-    total = ok = dup = miss = 0
+    total = ok = dup = miss = pre_skipped = 0
 
     ts = desde.replace(minute=0, second=0, microsecond=0)
     hasta_real = hasta.replace(minute=0, second=0, microsecond=0)
@@ -42,14 +42,22 @@ def backfill(desde: datetime, hasta: datetime):
             intento = ts.replace(minute=minuto)
             url_imagen = image_url(IMG_URL_BASE, intento, minuto, with_year_dir=True)
 
+            filename = filename_from_url(url_imagen)
+            if exists_record_by_filename(filename):
+                pre_skipped += 1
+                total += 1
+                continue
+
             try:
                 resp = session.get(url_imagen, timeout=10)
             except Exception:
                 miss += 1
+                total += 1
                 continue
 
             if resp.status_code != 200 or not resp.content:
                 miss += 1
+                total += 1
                 continue
 
             pred = predict_octas(resp.content)
@@ -74,7 +82,7 @@ def backfill(desde: datetime, hasta: datetime):
         ts += timedelta(hours=1)
 
     print(
-        f"\n📊 Backfill → total={total} | nuevos={ok} | duplicados={dup} | fallidos={miss}"
+        f"\n📊 Backfill → total={total} | nuevos={ok} | duplicados(pos-insert)={dup} | fallidos_req={miss} | saltados_preDB={pre_skipped}"
     )
 
 

@@ -209,3 +209,15 @@ def predict_octas(image_bytes: bytes) -> Dict[str, Any]:
         "descripcion": descripcion,
         "modelo_version": os.path.basename(OCTAS_MODEL_PATH),
     }
+
+def exists_record_by_filename(filename: str) -> bool:
+    conn = _conn()
+    try:
+        cur = conn.execute(
+            "SELECT 1 FROM registro_historico WHERE filename = ? LIMIT 1",
+            (filename,),
+        )
+        print("Skipeando prediccion, ya existe")
+        return cur.fetchone() is not None
+    finally:
+        conn.close()

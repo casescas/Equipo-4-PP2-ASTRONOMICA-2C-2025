@@ -4,3 +4,4 @@ venv
 __pycache__
 registros-octas.db
 /__pycache__
+site
