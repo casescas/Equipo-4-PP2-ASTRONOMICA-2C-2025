@@ -13,9 +13,7 @@ import { exportNodeToPdf } from "../utils/exportPdf"; // ajustá la ruta si camb
 const API = "http://127.0.0.1:8000/historial";
 
 // Helpers
-function toYMD(d) {
-  return d.toISOString().slice(0, 10);
-}
+
 function ymdOffset(days) {
   const d = new Date();
   d.setDate(d.getDate() + days);
@@ -32,6 +30,18 @@ const mode = (arr) => {
   }
   return best ?? "N/D";
 };
+
+function toDateArg(fechaISO) {
+  const [y, m, d] = fechaISO.split("-");
+  return `${d}/${m}/${y}`;
+}
+
+function toYMD(date) {
+  
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+    .toISOString()
+    .slice(0, 10);
+}
 
 export default function Dashboard() {
   const [modo, setModo] = useState("dia");
@@ -190,7 +200,7 @@ export default function Dashboard() {
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6">
         <h2 className="text-xl font-semibold text-cyan-300">
           {modo === "dia"
-            ? `Evolución por horas — ${dia}`
+            ? `Evolución por horas — ${toDateArg(dia)}`
             : "Evolución diaria — Promedio de Octas"}
         </h2>
 
@@ -251,20 +261,25 @@ export default function Dashboard() {
 
       {/* CHART */}
       <div className="w-full" style={{ minWidth: 320 }}>
-        <div className="w-full" style={{ height: 320, minHeight: 320 }}>
+        <div className="w-full" style={{ height: 350, minHeight: 320 }}>
           <ResponsiveContainer key={modo} width="100%" height="100%">
             {modo === "dia" ? (
               <LineChart data={serieHoras} margin={{ top: 10, right: 40, left: 10, bottom: 10 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#263244" />
-                <XAxis
-                  dataKey="h"
-                  type="number"
-                  domain={[-0.5, 23.5]}        // 👉 aire extra para que no recorte el último tick
-                  ticks={Array.from({ length: 24 }, (_, i) => i)}
-                  tickFormatter={(v) => `${String(v).padStart(2, "0")}:00`}
-                  stroke="#a0b9d9"
-                  tickMargin={12}
-                />
+            <XAxis
+              dataKey="h"
+              type="number"
+              domain={[-0.5, 23.5]}
+              ticks={Array.from({ length: 24 }, (_, i) => i)}
+              tickFormatter={(v) => `${String(v).padStart(2, "0")}:00`}
+              stroke="#a0b9d9"
+              height={60}
+              tickMargin={8}
+              tickLine={false}
+              angle={-45}
+              textAnchor="end"
+            />
+
                 <YAxis
                   stroke="#a0b9d9"
                   domain={[0, 8]}
@@ -280,14 +295,24 @@ export default function Dashboard() {
             ) : (
               <LineChart data={serieDiaria} margin={{ top: 10, right: 40, left: 10, bottom: 10 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#263244" />
-                <XAxis
-                  dataKey="fecha"
-                  stroke="#a0b9d9"
-                  interval="preserveStartEnd"  // 👉 mantiene primer y último tick
-                  tickMargin={16}               // 👉 evita que lo recorte
-                  minTickGap={8}
-                  padding={{ right: 20 }}       // 👉 aire adicional al borde derecho
-                />
+<XAxis
+  dataKey="fecha"
+  stroke="#a0b9d9"
+  tickFormatter={toDateArg}
+  ticks={serieDiaria.filter((_, i) => i % 2 === 0).map((d) => d.fecha)} // cada 2 fechas
+  interval={0}
+  height={80}           // más espacio vertical
+  tickMargin={0}
+  tickLine={false}
+  angle={-45}           // etiquetas diagonales
+  textAnchor="end"
+  dy={10}               // separa del eje
+  padding={{ right: 20 }} // aire al borde derecho
+/>
+
+
+
+
                 <YAxis
                   stroke="#a0b9d9"
                   domain={[0, 8]}
@@ -324,7 +349,7 @@ export default function Dashboard() {
             <tbody>
               {tablaResumen.map((r) => (
                 <tr key={r.fecha} className="border-t border-gray-700">
-                  <td className="py-2 px-2">{r.fecha}</td>
+                  <td className="py-2 px-2">{toDateArg(r.fecha)}</td>
                   <td className="text-right py-2 px-2">{r.promedio}</td>
                   <td className="text-right py-2 px-2">{r.pct}%</td>
                   <td className="text-right py-2 px-2">{r.confPct}%</td>
