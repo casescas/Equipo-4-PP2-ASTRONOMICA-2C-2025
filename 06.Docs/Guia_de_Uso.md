@@ -54,8 +54,13 @@ cd cielo-rio-grande/backend
 # Instalar dependencias del proyecto
 pip install -r requirements.txt
  
-# Ejecutar la API sin hot reload
-uvicorn main:app --host 0.0.0.0 --port 8000
+# 🧪 Opción 1 — Modo desarrollo (con hot reload)
+# Ideal mientras programás: reinicia automáticamente el servidor al guardar cambios.
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+# 🏭 Opción 2 — Modo producción (sin hot reload)
+# Recomendado para entornos estables o despliegues en servidores.
+python main.py
 
 # 💡 Tip:
 # Si querés habilitar el modo automático de recarga (hot reload),
