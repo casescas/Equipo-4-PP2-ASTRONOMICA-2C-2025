@@ -43,8 +43,8 @@ venv\Scripts\activate
 # Si aparece un error de permisos al activar el entorno,
 # ejecutá este comando para permitir scripts temporariamente:
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-
  ```
+
 ### 🔹 2. Instalar dependencias y ejecutar la API **sin hot reload**
 
 ```bash
