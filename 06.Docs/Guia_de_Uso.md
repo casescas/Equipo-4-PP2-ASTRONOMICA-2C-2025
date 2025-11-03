@@ -25,25 +25,47 @@ git pull
 
 💡 El backend gestiona la lógica de predicción, los endpoints y la base de datos local.
 
-1. Crear y activar un entorno virtual (recomendado):
+### 🔹 1. Crear y activar un entorno virtual *(recomendado)*
 
-   ```bash
-   python -m venv venv
-   # Linux / macOS
-   source venv/bin/activate
-   # Windows
-   venv\Scripts\activate
-   ```
+Primero, creá el entorno virtual con **venv** y activalo según tu sistema operativo 👇
 
-2. Instalar dependencias y ejecutar la API **sin hot reload**:
+```bash
+# Crear entorno virtual
+python -m venv venv
 
-   ```bash
-   cd cielo-rio-grande/backend
-   pip install -r requirements.txt
-   uvicorn main:app --host 0.0.0.0 --port 8000
-   ```
+# 🐧 Linux / macOS
+source venv/bin/activate
 
-3. Abrí la documentación interactiva (Swagger UI):  
+# 🪟 Windows
+venv\Scripts\activate
+
+# 💡 Tip (PowerShell)
+# Si aparece un error de permisos al activar el entorno,
+# ejecutá este comando para permitir scripts temporariamente:
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+
+ ```
+### 🔹 2. Instalar dependencias y ejecutar la API **sin hot reload**
+
+```bash
+# Ir al directorio del backend
+cd cielo-rio-grande/backend
+ ```
+ ``` bash
+# Instalar dependencias del proyecto
+pip install -r requirements.txt
+ ```
+``` bash
+# Ejecutar la API sin hot reload
+uvicorn main:app --host 0.0.0.0 --port 8000
+
+# 💡 Tip:
+# Si querés habilitar el modo automático de recarga (hot reload),
+# agregá la opción --reload al final del comando:
+# uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+ ```
+### 3. Abrí la documentación interactiva (Swagger UI):  
    👉 [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 
 ---
