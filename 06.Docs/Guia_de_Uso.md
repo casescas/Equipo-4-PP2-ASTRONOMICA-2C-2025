@@ -50,12 +50,10 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 ```bash
 # Ir al directorio del backend
 cd cielo-rio-grande/backend
- ```
- ``` bash
+ 
 # Instalar dependencias del proyecto
 pip install -r requirements.txt
- ```
-``` bash
+ 
 # Ejecutar la API sin hot reload
 uvicorn main:app --host 0.0.0.0 --port 8000
 
@@ -63,8 +61,8 @@ uvicorn main:app --host 0.0.0.0 --port 8000
 # Si querés habilitar el modo automático de recarga (hot reload),
 # agregá la opción --reload al final del comando:
 # uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-
  ```
+
 ### 3. Abrí la documentación interactiva (Swagger UI):  
    👉 [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 
