@@ -63,12 +63,12 @@ function ConfidenceRing({ value = 0, size = 120, stroke = 12, onClick }) {
 }
 
 /* ================ Tarjeta Cámara ==================== */
-function CameraCard({ cameraUrl, fechaActual, clima, octas }) {
+function CameraCard({ fechaActual, clima, octas }) {
   return (
     <div className="relative w-full">
       <figure className="relative w-full aspect-[16/10] overflow-hidden rounded-[22px] bg-[#0a0f16] ring-1 ring-white/10 shadow-[0_10px_30px_rgba(0,0,0,.55),inset_0_0_0_2px_rgba(255,255,255,.04)]">
         <img
-          src={cameraUrl}
+          src={octas.url_imagen}
           alt="Cielo Río Grande"
           className="absolute inset-0 h-full w-full object-cover"
           onError={(e) => (e.currentTarget.style.opacity = 0.25)}
@@ -210,7 +210,7 @@ export default function App() {
         <Card>
           <div className="grid grid-cols-1 xl:grid-cols-[720px_1fr] gap-8 items-center">
             {/* Cámara */}
-            <CameraCard cameraUrl={cameraUrl} fechaActual={fechaActual} clima={clima} octas={octas} />
+            <CameraCard cameraUrl={octas} fechaActual={fechaActual} clima={clima} octas={octas} />
 
             {/* Métricas: mini-tarjetas */}
             <div className="flex flex-col gap-5">

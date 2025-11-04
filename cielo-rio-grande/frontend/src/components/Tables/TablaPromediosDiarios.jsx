@@ -1,7 +1,17 @@
 import { useMemo, useState } from "react";
 import { filterByDateRange } from "../../api/registros";
 
-// moda genérica
+// Clasificación según promedio de octas (basada en esquema WMO)
+function categorizeByAvgOctas(o) {
+  if (!Number.isFinite(o)) return { cat: "N/D", desc: "—" };
+  if (o <= 0.5)  return { cat: "SKC", desc: "Despejado (0/8)" };
+  if (o <= 2.5)  return { cat: "FEW", desc: "Poco nublado (1–2/8)" };
+  if (o <= 5.5)  return { cat: "SCT", desc: "Nubes dispersas (3–5/8)" };
+  if (o <= 7.5)  return { cat: "BKN", desc: "Muy nublado (6–7/8)" };
+  return { cat: "OVC", desc: "Cubierto (8/8)" };
+}
+
+// moda genérica (la dejamos para otros usos)
 function mode(arr) {
   const freq = new Map();
   let best = null, bestC = 0;
@@ -19,6 +29,7 @@ function groupDaily(rows) {
     if (!map.has(r.ymd)) map.set(r.ymd, []);
     map.get(r.ymd).push(r);
   }
+
   return Array.from(map.entries())
     .map(([ymd, list]) => {
       const octasArr = list.map(x => Number(x.octas || 0));
@@ -33,8 +44,19 @@ function groupDaily(rows) {
       const confAvgRaw = confArr.length ? confArr.reduce((a,b)=>a+b,0) / confArr.length : 0;
       const confPct = confAvgRaw <= 1 ? Math.round(confAvgRaw * 100) : Math.round(confAvgRaw);
 
-      const catDom = mode(list.map(x => x.categoria || "N/D"));
-      const descDom = mode(list.map(x => (x.descripcion || "").trim() || "—"));
+      // Clasificación derivada del PROMEDIO diario
+      const { cat: catAvg, desc: descAvg } = categorizeByAvgOctas(avg);
+
+      // Frecuencia absoluta de categorías individuales del día
+      const faMap = list.reduce((acc, x) => {
+        const c = (x.categoria || "N/D").trim();
+        acc[c] = (acc[c] || 0) + 1;
+        return acc;
+      }, {});
+      const faStr = Object.entries(faMap)
+        .sort((a,b)=>b[1]-a[1])
+        .map(([k,v]) => `${k}: ${v}`)
+        .join(" · ");
 
       return {
         ymd,
@@ -42,9 +64,10 @@ function groupDaily(rows) {
         avg,
         min: count ? Math.min(...octasArr) : 0,
         max: count ? Math.max(...octasArr) : 0,
-        pct: count ? Number(((avg / 8) * 100).toFixed(0)) : 0, // % de nubosidad promedio
-        catDom,
-        descDom,
+        pct: count ? Number(((avg / 8) * 100).toFixed(0)) : 0, // % nubosidad promedio
+        catAvg,
+        descAvg,
+        faStr,
         confPct,
       };
     })
@@ -88,15 +111,14 @@ export default function TablaPromediosDiarios({ rows, onPickDay }) {
         <table className="min-w-full text-sm">
           <thead className="sticky top-0 bg-gray-800">
             <tr>
-              <th className="text-left p-2">Fecha</th>
-              <th className="text-right p-2">Prom. octas</th>
-              <th className="text-right p-2">% Nubosidad</th>
-              <th className="text-right p-2">Conf. prom.</th>
-              <th className="text-right p-2">Mín</th>
-              <th className="text-right p-2">Máx</th>
-              <th className="text-left p-2">Cat. dominante</th>
-              <th className="text-left p-2">Descripción dominante</th>
-              <th className="text-right p-2">Registros</th>
+              <th className="text-left p-2 text-cyan-400 font-semibold">Fecha</th>
+              <th className="text-right p-2 text-cyan-400 font-semibold">Prom. Octas</th>
+              <th className="text-right p-2 text-cyan-400 font-semibold">% Nubosidad</th>
+              <th className="text-right p-2 text-cyan-400 font-semibold">Conf. prom.</th>
+              <th className="text-left p-2 text-cyan-400 font-semibold">Categoría Dom.</th>
+              <th className="text-left p-2 text-cyan-400 font-semibold">Descripción Dom.</th>
+              <th className="text-left p-2 text-cyan-400 font-semibold">Frec. ABS categoría</th>
+              <th className="text-right p-2 text-cyan-400 font-semibold">Registros</th>
               <th className="p-2"></th>
             </tr>
           </thead>
@@ -107,10 +129,9 @@ export default function TablaPromediosDiarios({ rows, onPickDay }) {
                 <td className="p-2 text-right">{d.avg}</td>
                 <td className="p-2 text-right">{d.pct}%</td>
                 <td className="p-2 text-right">{d.confPct}%</td>
-                <td className="p-2 text-right">{d.min}</td>
-                <td className="p-2 text-right">{d.max}</td>
-                <td className="p-2">{d.catDom}</td>
-                <td className="p-2">{d.descDom}</td>
+                <td className="p-2">{d.catAvg}</td>
+                <td className="p-2">{d.descAvg}</td>
+                <td className="p-2">{d.faStr}</td>
                 <td className="p-2 text-right">{d.count}</td>
                 <td className="p-2 text-right">
                   <button
@@ -124,7 +145,7 @@ export default function TablaPromediosDiarios({ rows, onPickDay }) {
             ))}
             {!days.length && (
               <tr>
-                <td className="p-3 text-gray-400" colSpan={10}>
+                <td className="p-3 text-gray-400" colSpan={9}>
                   Sin datos para el rango seleccionado.
                 </td>
               </tr>

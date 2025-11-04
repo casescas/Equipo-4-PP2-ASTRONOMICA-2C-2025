@@ -6,7 +6,8 @@ import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
 /**
- * Exporta un nodo del DOM a PDF con paginado automático y encabezado/pie.
+ * Exporta un nodo del DOM a PDF con paginado automático y encabezado/pie,
+ * permitiendo ajustar calidad, DPI, y formato de imagen.
  *
  * @param {Object} opts
  * @param {HTMLElement} opts.node           // Nodo raíz a exportar (obligatorio)
@@ -15,13 +16,16 @@ import html2canvas from "html2canvas";
  * @param {string} [opts.footer]            // Texto de pie (opcional)
  * @param {'p'|'l'} [opts.orientation='p']  // Portrait o Landscape
  * @param {string} [opts.pageSize='a4']     // a4, letter, etc.
- * @param {number} [opts.margin=12]         // Margen en mm (aplica a los 4 lados)
- * @param {number} [opts.maxScale=2]        // Límite para DPR efectivo (2 = buena calidad sin matar memoria)
+ * @param {number} [opts.margin=12]         // Margen en mm
+ * @param {number} [opts.maxScale=3]        // Límite del DPR (3 = alta calidad)
  * @param {boolean} [opts.useCORS=true]     // Habilitar CORS para imágenes
- * @param {boolean} [opts.printBackground=true] // Capturar fondos (Tailwind, etc.)
- * @param {number} [opts.headerGap=6]       // Espacio extra bajo header en mm
- * @param {number} [opts.footerGap=6]       // Espacio extra sobre footer en mm
- * @param {boolean} [opts.numberPages=true] // Mostrar "pág. X de Y" en el pie
+ * @param {boolean} [opts.printBackground=true] // Capturar fondos (Tailwind)
+ * @param {number} [opts.headerGap=6]       // Espacio extra bajo header (mm)
+ * @param {number} [opts.footerGap=6]       // Espacio extra sobre footer (mm)
+ * @param {boolean} [opts.numberPages=true] // Mostrar numeración
+ * @param {string} [opts.imgType='image/png'] // Tipo de imagen (PNG o JPEG)
+ * @param {number} [opts.imgQuality=0.98]     // Calidad JPEG (si aplica)
+ * @param {number} [opts.targetDpi]           // DPI objetivo (ej. 192, 240, 300)
  */
 export async function exportNodeToPdf(opts = {}) {
   const {
@@ -32,106 +36,124 @@ export async function exportNodeToPdf(opts = {}) {
     orientation = "p",
     pageSize = "a4",
     margin = 12,
-    maxScale = 2,
+    maxScale = 3,
     useCORS = true,
     printBackground = true,
     headerGap = 6,
     footerGap = 6,
     numberPages = true,
+    imgType = "image/png",
+    imgQuality = 0.98,
+    targetDpi,
   } = opts;
 
   if (!node) throw new Error("exportNodeToPdf: 'node' es requerido");
 
-  // 1) Esperar fuentes web → evita “salto” de tipografías y borrosidad
-  await document.fonts?.ready?.catch(() => {});
+  // 1️⃣ Esperar fuentes para evitar saltos visuales
+  try { await document.fonts?.ready; } catch {}
 
-  // 2) Congelar animaciones/transiciones durante el render para evitar parpadeos
+  // 2️⃣ Congelar animaciones para evitar parpadeos
   const freeze = freezeAnimations(node);
 
-  // 3) Calcular scale efectivo (DPR capado)
-  const dpr = Math.min(window.devicePixelRatio || 1, maxScale);
+  // 3️⃣ Calcular DPR efectivo según targetDpi (96dpi CSS base)
+  const cssDpi = 96;
+  const requestedScale = targetDpi ? targetDpi / cssDpi : (window.devicePixelRatio || 1);
+  const dpr = Math.min(requestedScale, maxScale);
 
-  // 4) Render a canvas con html2canvas
-  const canvas = await html2canvas(node, {
-    scale: dpr,
-    useCORS,
-    allowTaint: false,
-    backgroundColor: getComputedStyle(document.body).backgroundColor || "#ffffff",
-    logging: false,
-    windowWidth: node.scrollWidth, // asegura ancho completo
-    scrollX: 0,
-    scrollY: -window.scrollY,
-    removeContainer: true,
-    onclone: (doc) => {
-      // Opcional: fuerzo el nodo a "width:auto" y sin transform para evitar recortes
-      const cloned = doc.querySelector(`#${node.id}`) || doc.body;
-      cloned.style.transform = "none";
-      cloned.style.maxHeight = "none";
-    },
-  });
+  // 4️⃣ Asegurar un id temporal si el nodo no tiene
+  const hadId = typeof node.id === "string" && node.id.trim().length > 0;
+  const tempId = `export-${Date.now()}`;
+  if (!hadId) node.id = tempId;
 
-  // 5) Crear PDF y convertir mm ⇄ px
+  let canvas;
+  try {
+    // 5️⃣ Renderizar el nodo con html2canvas
+    canvas = await html2canvas(node, {
+      scale: dpr,
+      useCORS,
+      allowTaint: false,
+      backgroundColor: getComputedStyle(document.body).backgroundColor || "#ffffff",
+      logging: false,
+      windowWidth: node.scrollWidth,
+      scrollX: 0,
+      scrollY: -window.scrollY,
+      removeContainer: true,
+      onclone: (doc) => {
+        // Evita querySelector("#") inválido
+        const targetId = node.id && node.id.trim().length ? node.id : null;
+        const cloned = targetId ? doc.getElementById(targetId) : doc.body;
+        if (cloned && cloned.style) {
+          cloned.style.transform = "none";
+          cloned.style.maxHeight = "none";
+        }
+        if (printBackground) {
+          doc.documentElement.style.background = getComputedStyle(document.documentElement).background || "";
+          doc.body.style.background = getComputedStyle(document.body).background || "";
+        }
+      },
+    });
+  } finally {
+    if (!hadId) node.removeAttribute("id");
+  }
+
+  // 6️⃣ Crear PDF
   const pdf = new jsPDF({ orientation, unit: "mm", format: pageSize, compress: true });
   const pageW = pdf.internal.pageSize.getWidth();
   const pageH = pdf.internal.pageSize.getHeight();
 
-  // Área útil descontando márgenes + header/footer
   const topMargin = margin + (header ? headerGap : 0);
   const bottomMargin = margin + (footer ? footerGap : 0);
   const contentWmm = pageW - margin * 2;
   const contentHmm = pageH - topMargin - bottomMargin;
 
-  // Dimensiones canvas en px
   const imgWpx = canvas.width;
   const imgHpx = canvas.height;
 
-  // Escala para que el canvas quepa en el ancho util del PDF
-  const pxPerMm = imgWpx / contentWmm; // cuántos px hay en 1 mm al ajustar al ancho
-  const sliceHmm = contentHmm;         // alto util por página (mm)
-  const sliceHpx = Math.floor(sliceHmm * pxPerMm);
+  const pxPerMm = imgWpx / contentWmm;
+  const sliceHpx = Math.max(1, Math.floor(contentHmm * pxPerMm));
+  const pages = Math.max(1, Math.ceil(imgHpx / sliceHpx));
 
-  // 6) Cortar el canvas en “tiras” por página para evitar escalados extremos
-  const pages = Math.ceil(imgHpx / sliceHpx);
-  const imgType = "image/jpeg"; // JPEG suele pesar menos que PNG
-  const imgQuality = 0.92;
-
+  // 7️⃣ Generar cada página del PDF
   for (let i = 0; i < pages; i++) {
     if (i > 0) pdf.addPage();
 
-    const sy = i * sliceHpx;                      // origen Y en px
-    const sh = Math.min(sliceHpx, imgHpx - sy);   // alto de la tira en px
+    const sy = i * sliceHpx;
+    const sh = Math.min(sliceHpx, imgHpx - sy);
 
-    // Canvas temporal con la “tira”
+    // Canvas temporal
     const pageCanvas = document.createElement("canvas");
     pageCanvas.width = imgWpx;
     pageCanvas.height = sh;
-    const ctx = pageCanvas.getContext("2d", { willReadFrequently: false });
-    // Recorta la porción
-    ctx.drawImage(canvas, 0, sy, imgWpx, sh, 0, 0, imgWpx, sh);
 
-    // Convertir a dataURL
+    const ctx = pageCanvas.getContext("2d");
+    if (ctx) {
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(canvas, 0, sy, imgWpx, sh, 0, 0, imgWpx, sh);
+    }
+
     const dataUrl = pageCanvas.toDataURL(imgType, imgQuality);
 
-    // 7) Encabezado
+    // Encabezado
     if (header) {
       pdf.setFontSize(10);
       pdf.setTextColor(60);
       pdf.text(header, margin, margin);
     }
 
-    // 8) Imagen en página
+    // Imagen
     pdf.addImage(
       dataUrl,
-      "JPEG",
+      imgType === "image/png" ? "PNG" : "JPEG",
       margin,
       topMargin,
       contentWmm,
-      (sh / pxPerMm), // alto en mm proporcional
+      sh / pxPerMm,
       undefined,
-      "FAST"          // Hint de compresión
+      "FAST"
     );
 
-    // 9) Pie de página + numeración
+    // Pie
     const bottomY = pageH - margin;
     if (footer || numberPages) {
       pdf.setFontSize(9);
@@ -143,16 +165,15 @@ export async function exportNodeToPdf(opts = {}) {
     }
   }
 
-  // 10) Descargar
+  // 8️⃣ Guardar PDF
   pdf.save(filename);
 
-  // 11) Restaurar estilos
+  // 9️⃣ Restaurar animaciones
   freeze.restore?.();
 }
 
 /**
- * Desactiva transiciones/animaciones en el subárbol para capturar más nítido.
- * Devuelve un objeto con restore().
+ * Desactiva animaciones/transiciones para mejorar nitidez en la captura.
  */
 function freezeAnimations(root) {
   const style = document.createElement("style");
@@ -166,15 +187,14 @@ function freezeAnimations(root) {
   `;
   document.head.appendChild(style);
 
-  // Tailwind a veces usa transform/translate para animar
-  const prev = root.style.transform;
+  const prevTransform = root.style.transform;
   root.style.transform = "none";
 
   return {
     restore: () => {
       const s = document.querySelector('style[data-export-pdf-freeze="true"]');
       if (s) s.remove();
-      root.style.transform = prev || "";
+      root.style.transform = prevTransform || "";
     },
   };
 }

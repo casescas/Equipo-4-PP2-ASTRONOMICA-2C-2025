@@ -15,5 +15,6 @@ nav:
     - Introducción: Reportes.md
     - Reporte de modelo EfficientNet_B0: Reporte_EfficientNet_B0.md
     - Reporte de modelo EfficientNet_B3: Reporte_EfficientNet_B3.md
+  - Plan de Escalamiento: Plan_de_Escalamiento.md
 
 docs_dir: 06.Docs
