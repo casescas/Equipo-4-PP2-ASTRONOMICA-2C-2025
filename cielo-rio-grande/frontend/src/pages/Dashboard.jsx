@@ -158,7 +158,6 @@ function DonutTooltip({ active, payload, total }) {
   );
 }
 
-
 /* ========= Línea MEMOIZADA ========= */
 const StableLineChart = React.memo(
   function StableLineChart({ data, modo, ticksReduced, xTickFormatter }) {
@@ -261,14 +260,10 @@ export default function Dashboard() {
         } else if (modo === "mes") {
           const r = monthRange.from ? monthRange : monthStartEndFromParts(selectedYear, selectedMonth);
           url.searchParams.set("desde", r.from);
-          url.searchParams.set("hasta", r.toExclusive); // half-open
+          url.searchParams.set("hasta", r.toExclusive); // half-open sólo para MES
         } else {
           if (isYMD(desde)) url.searchParams.set("desde", desde);
-          if (isYMD(hasta)) {
-            const d = new Date(hasta);
-            d.setDate(d.getDate() + 1); // incluir “hasta” inclusive
-            url.searchParams.set("hasta", toYMD(d));
-          }
+          if (isYMD(hasta)) url.searchParams.set("hasta", hasta); // inclusivo
         }
         const res = await fetch(url.toString());
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -297,17 +292,11 @@ export default function Dashboard() {
     }
 
     if (modo === "rango" || modo === "semana") {
-      const endPlusOne = (() => {
-        if (!isYMD(hasta)) return null;
-        const d = new Date(hasta);
-        if (!isValidDate(d)) return null;
-        d.setDate(d.getDate() + 1);
-        return toYMD(d);
-      })();
+      // inclusivo
       return raw.filter((x) => {
         const ymd = (x?.fecha_captura || "").slice(0, 10);
         const lowerOk = isYMD(desde) ? (ymd >= desde) : true;
-        const upperOk = endPlusOne ? (ymd < endPlusOne) : true;
+        const upperOk = isYMD(hasta) ? (ymd <= hasta) : true;
         return lowerOk && upperOk;
       });
     }
@@ -388,71 +377,6 @@ export default function Dashboard() {
 
   const series = modo === "dia" ? serieHoras : serieAgregada;
 
-  // ======== Donut + diccionario ========
-  const donutData = useMemo(() => {
-    const m = new Map();
-    filteredRaw.forEach((r) => {
-      const cat = (r?.categoria || "N/D").trim();
-      if (!m.has(cat)) m.set(cat, 0);
-      m.set(cat, m.get(cat) + 1);
-    });
-    return Array.from(m.entries())
-      .filter(([k]) => k in CAT_COLORS)
-      .sort((a, b) => b[1] - a[1])
-      .map(([name, value]) => ({ name, value }));
-  }, [filteredRaw]);
-// Total general del donut (para calcular porcentajes reales)
-const totalDonut = useMemo(
-  () => donutData.reduce((a, b) => a + (b?.value ?? 0), 0),
-  [donutData]
-);
-  // ======== Donut pretty labels ========
-const RAD = Math.PI / 180;
-const DONUT_INNER = 72;   // radio interior "estético"
-const DONUT_OUTER = 100;  // radio exterior "estético"
-const MIN_PCT_TO_SHOW = 0.07; // no mostrar porciones < 7% para evitar ruido
-
-function renderPercentLabel({ cx, cy, midAngle, innerRadius, outerRadius, percent }) {
-  if (percent < MIN_PCT_TO_SHOW) return null;
-
-  const r = (innerRadius + (outerRadius - innerRadius) * 0.62);
-  const x = cx + r * Math.cos(-midAngle * RAD);
-  const y = cy + r * Math.sin(-midAngle * RAD);
-
-  const text = `${(percent * 100).toFixed(1)}%`;
-
-  const pad = 6;
-  const h = 18;
-  const charW = 7.2;
-  const w = text.length * charW + pad * 2;
-
-  return (
-    <g>
-      <rect
-        x={x - w / 2}
-        y={y - h / 2}
-        width={w}
-        height={h}
-        rx={8}
-        ry={8}
-        fill="rgba(2,10,23,0.9)"
-        stroke="rgba(148,163,184,0.35)"
-      />
-      <text
-        x={x}
-        y={y}
-        fill="#e6f3ff"
-        fontSize={12}
-        fontWeight={700}
-        textAnchor="middle"
-        dominantBaseline="central"
-      >
-        {text}
-      </text>
-    </g>
-  );
-}
-
   // ======== Tabla ========
   const tablaResumen = useMemo(() => {
     const build = (lista, keyExtractor) => {
@@ -476,14 +400,12 @@ function renderPercentLabel({ cx, cy, midAngle, innerRadius, outerRadius, percen
           const confAvg = confVals.length ? confVals.reduce((a, b) => a + b, 0) / confVals.length : 0;
           const confPct = confAvg <= 1 ? Math.round(confAvg * 100) : Math.round(confAvg);
 
-          const freq = rows.reduce((acc, x) => {
+          // 👇 ESTE es el freq que vamos a reutilizar en las cards
+          const freqMap = rows.reduce((acc, x) => {
             const c = (x?.categoria || "N/D").trim();
             acc[c] = (acc[c] || 0) + 1;
             return acc;
           }, {});
-          const sorted = Object.entries(freq).sort((a, b) => b[1] - a[1]);
-          const [catDom] = sorted[0] || ["N/D", 0];
-          const faStr = sorted.map(([c, v]) => `${c}: ${v}`).join(" · ");
 
           let keyLabel;
           if (modo === "mes") keyLabel = monthLabelES(key);
@@ -499,10 +421,10 @@ function renderPercentLabel({ cx, cy, midAngle, innerRadius, outerRadius, percen
             promedio: Number(avg.toFixed(2)),
             pct: Number(((avg / 8) * 100).toFixed(0)),
             confPct,
-            catDom,
-            descDom: CAT_DESC[catDom] || "—",
-            faStr,
+            catDom: Object.entries(freqMap).sort((a, b) => b[1] - a[1])[0]?.[0] || "N/D",
+            descDom: CAT_DESC[Object.entries(freqMap).sort((a, b) => b[1] - a[1])[0]?.[0]] || "—",
             count: rows.length,
+            freqMap, // 👈 lo guardamos
           };
         });
     };
@@ -516,6 +438,31 @@ function renderPercentLabel({ cx, cy, midAngle, innerRadius, outerRadius, percen
     }
     return [];
   }, [filteredRaw, modo, selectedMonth, selectedYear]);
+
+  // total que usa la tabla
+  const totalRegistrosTabla = useMemo(
+    () => tablaResumen.reduce((acc, r) => acc + (r.count || 0), 0),
+    [tablaResumen]
+  );
+
+  // ======== Donut + cards tomando la frecuencia de la tabla ========
+  const donutData = useMemo(() => {
+    if (!tablaResumen.length) return [];
+    // tomamos la primera fila (en mes es 1 sola, en rango/día hay varias, podés ajustar si querés)
+    const freq = tablaResumen.length === 1
+      ? tablaResumen[0].freqMap || {}
+      : tablaResumen.reduce((acc, row) => {
+          // si son varias filas (rango) sumamos todas
+          Object.entries(row.freqMap || {}).forEach(([cat, n]) => {
+            acc[cat] = (acc[cat] || 0) + n;
+          });
+          return acc;
+        }, {});
+    return Object.entries(freq)
+      .filter(([k]) => k in CAT_COLORS)
+      .sort((a, b) => b[1] - a[1])
+      .map(([name, value]) => ({ name, value }));
+  }, [tablaResumen]);
 
   // ======== KPIs ========
   const kpis = useMemo(() => {
@@ -551,9 +498,9 @@ function renderPercentLabel({ cx, cy, midAngle, innerRadius, outerRadius, percen
   const handleExportCsv = () => {
     const headers = [
       modo === "mes" ? "Mes" : modo === "semana" ? "Semana (del — al)" : "Fecha",
-      "Prom. Octas","% Nubosidad","Conf. prom.","Categoría Dom.","Descripción Dom.","Frec. Abs. categoría","Registros",
+      "Prom. Octas","% Nubosidad","Conf. prom.","Categoría Dom.","Descripción Dom.","Registros",
     ];
-    const rows = tablaResumen.map((r) => [r.keyLabel, r.promedio, `${r.pct}%`, `${r.confPct}%`, r.catDom, r.descDom, r.faStr, r.count]);
+    const rows = tablaResumen.map((r) => [r.keyLabel, r.promedio, `${r.pct}%`, `${r.confPct}%`, r.catDom, r.descDom, r.count]);
     const csv = toCsvText(headers, rows);
     downloadBlob({ blob: new Blob([csv], { type: "text/csv;charset=utf-8" }), filename: `Resumen_${modo}_${new Date().toISOString().slice(0, 10)}.csv` });
   };
@@ -562,7 +509,7 @@ function renderPercentLabel({ cx, cy, midAngle, innerRadius, outerRadius, percen
     const data = tablaResumen.map((r) => ({
       [modo === "mes" ? "Mes" : modo === "semana" ? "Semana (del — al)" : "Fecha"]: r.keyLabel,
       "Prom. Octas": r.promedio, "% Nubosidad": r.pct, "Conf. prom.": r.confPct,
-      "Categoría Dom.": r.catDom, "Descripción Dom.": r.descDom, "Frec. Abs. categoría": r.faStr, Registros: r.count,
+      "Categoría Dom.": r.catDom, "Descripción Dom.": r.descDom, Registros: r.count,
     }));
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
@@ -674,45 +621,82 @@ function renderPercentLabel({ cx, cy, midAngle, innerRadius, outerRadius, percen
         {/* Donut 1/4 con % centrado */}
         <div className="col-span-12 lg:col-span-3 bg-gray-900 border border-cyan-800 rounded-xl p-4">
           <h4 className="text-sm text-gray-300 mb-2 text-center">Distribución de categorías</h4>
-          <div className="flex justify-center">
+          <div className="flex justify-center" style={{ overflow: "visible" }}>
             <PieChart width={donutSize} height={donutSize}>
-              <Tooltip content={<DonutTooltip total={totalDonut} />} />
+              <defs>
+                <filter id="ds">
+                  <feDropShadow dx="0" dy="1" stdDeviation="2" floodOpacity="0.35" />
+                </filter>
+              </defs>
+
+              <Tooltip content={<DonutTooltip total={totalRegistrosTabla} />} />
+
               <Pie
-  data={donutData}
-  dataKey="value"
-  nameKey="name"
-  cx="50%"
-  cy="50%"
-  innerRadius={DONUT_INNER}
-  outerRadius={DONUT_OUTER}
-  startAngle={210}
-  endAngle={-150}
-  paddingAngle={3}
-  cornerRadius={6}
-  labelLine={false}
-  label={renderPercentLabel}
-  onMouseEnter={(e) => setHoveredCat(e?.name ?? null)}
-  onMouseLeave={() => setHoveredCat(null)}
->
-  {donutData.map((d, i) => (
-    <Cell
-      key={i}
-      fill={CAT_COLORS[d.name] || "#999"}
-      fillOpacity={hoveredCat && hoveredCat !== d.name ? 0.45 : 1}
-      stroke="#0b1220"
-      strokeWidth={2}
-      style={{ filter: "url(#ds)" }}
-    />
-  ))}
-</Pie>
-
+                data={donutData}
+                dataKey="value"
+                nameKey="name"
+                cx="50%"
+                cy="50%"
+                innerRadius={72}
+                outerRadius={100}
+                startAngle={210}
+                endAngle={-150}
+                paddingAngle={3}
+                cornerRadius={6}
+                labelLine={false}
+                label={({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
+                  const MIN_PCT_TO_SHOW = 0.07;
+                  if (percent < MIN_PCT_TO_SHOW) return null;
+                  const RAD = Math.PI / 180;
+                  const r = innerRadius + (outerRadius - innerRadius) * 0.72;
+                  const x = cx + r * Math.cos(-midAngle * RAD);
+                  const y = cy + r * Math.sin(-midAngle * RAD);
+                  const text = `${(percent * 100).toFixed(1)}%`;
+                  const pad = 5;
+                  const h = 16;
+                  const charW = 7.2;
+                  const w = text.length * charW + pad * 2;
+                  return (
+                    <g>
+                      <rect
+                        x={x - w / 2}
+                        y={y - h / 2}
+                        width={w}
+                        height={h}
+                        rx={8}
+                        ry={8}
+                        fill="rgba(2,10,23,0.9)"
+                        stroke="rgba(148,163,184,0.35)"
+                      />
+                      <text
+                        x={x}
+                        y={y}
+                        fill="#e6f3ff"
+                        fontSize={12}
+                        fontWeight={700}
+                        textAnchor="middle"
+                        dominantBaseline="central"
+                      >
+                        {text}
+                      </text>
+                    </g>
+                  );
+                }}
+                onMouseEnter={(e) => setHoveredCat(e?.name ?? null)}
+                onMouseLeave={() => setHoveredCat(null)}
+              >
+                {donutData.map((d, i) => (
+                  <Cell
+                    key={i}
+                    fill={CAT_COLORS[d.name] || "#999"}
+                    fillOpacity={hoveredCat && hoveredCat !== d.name ? 0.45 : 1}
+                    stroke="#0b1220"
+                    strokeWidth={2}
+                    style={{ filter: "url(#ds)" }}
+                  />
+                ))}
+              </Pie>
             </PieChart>
-            <defs>
-  <filter id="ds">
-    <feDropShadow dx="0" dy="1" stdDeviation="2" floodOpacity="0.35" />
-  </filter>
-</defs>
-
           </div>
 
           {/* Diccionario */}
@@ -765,7 +749,6 @@ function renderPercentLabel({ cx, cy, midAngle, innerRadius, outerRadius, percen
                 <th className="text-right py-2 px-2">Conf. prom.</th>
                 <th className="text-left py-2 px-2">Categoría Dom.</th>
                 <th className="text-left py-2 px-2">Descripción Dom.</th>
-                <th className="text-left py-2 px-2">Frec. Abs. categoría</th>
                 <th className="text-right py-2 px-2">Registros</th>
               </tr>
             </thead>
@@ -778,15 +761,14 @@ function renderPercentLabel({ cx, cy, midAngle, innerRadius, outerRadius, percen
                   <td className="text-right py-2 px-2">{r.confPct}%</td>
                   <td className="py-2 px-2">{r.catDom}</td>
                   <td className="py-2 px-2">{r.descDom}</td>
-                  <td className="py-2 px-2">{r.faStr}</td>
                   <td className="text-right py-2 px-2">{r.count}</td>
                 </tr>
               ))}
               {!tablaResumen.length && !loading && (
-                <tr><td colSpan={8} className="py-4 text-center text-gray-500">No hay datos para el período seleccionado.</td></tr>
+                <tr><td colSpan={7} className="py-4 text-center text-gray-500">No hay datos para el período seleccionado.</td></tr>
               )}
               {loading && (
-                <tr><td colSpan={8} className="py-4 text-center text-gray-500">Cargando…</td></tr>
+                <tr><td colSpan={7} className="py-4 text-center text-gray-500">Cargando…</td></tr>
               )}
             </tbody>
           </table>
