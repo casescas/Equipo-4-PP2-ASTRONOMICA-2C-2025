@@ -39,14 +39,17 @@ const MESES_ES = [
 
 // =================== Helpers ===================
 const isYMD = (s) => typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s);
+const isValidDate = (d) => d instanceof Date && !isNaN(d);
 
 function toYMD(date) {
+  if (!isValidDate(date)) return "";
   return new Date(date.getTime() - date.getTimezoneOffset() * 60000)
     .toISOString()
     .slice(0, 10);
 }
 function ymdOffset(days, baseYmd) {
-  const d = baseYmd ? new Date(baseYmd) : new Date();
+  const d = (baseYmd && isYMD(baseYmd)) ? new Date(baseYmd) : new Date();
+  if (!isValidDate(d)) return "";
   d.setDate(d.getDate() + days);
   return toYMD(d);
 }
@@ -55,12 +58,13 @@ function toDateArg(iso) {
   return `${d}/${m}/${y}`;
 }
 function toDM(ymd) {
-  const [y, m, d] = ymd.split("-");
+  const [, m, d] = ymd.split("-");
   return `${d}/${m}`;
 }
 function weekStartYMDFrom(date) {
   const d = new Date(date);
-  const day = d.getDay(); // 0=dom..6=sáb
+  if (!isValidDate(d)) return "";
+  const day = d.getDay(); // 0 dom..6 sáb
   const diffToMonday = (day + 6) % 7;
   d.setDate(d.getDate() - diffToMonday);
   return toYMD(d);
@@ -123,12 +127,14 @@ function withTrend(data, xKey, yKey) {
 }
 
 /* ======== Tooltip custom del donut ======== */
-function DonutTooltip({ active, payload }) {
+function DonutTooltip({ active, payload, total }) {
   if (!active || !payload?.length) return null;
   const p = payload[0];
   const name = p?.name ?? "";
   const value = p?.value ?? 0;
+  const pct = total > 0 ? ((value / total) * 100).toFixed(1) : "0.0";
   const desc = CAT_DESC[name] || "—";
+
   return (
     <div
       style={{
@@ -142,13 +148,18 @@ function DonutTooltip({ active, payload }) {
         pointerEvents: "none",
       }}
     >
-      <div style={{ fontWeight: 600, marginBottom: 2 }}>{name} — {desc}</div>
-      <div style={{ opacity: 0.9 }}>{value} registros</div>
+      <div style={{ fontWeight: 600, marginBottom: 2 }}>
+        {name} — {desc}
+      </div>
+      <div style={{ opacity: 0.9 }}>
+        {value} registros • {pct}%
+      </div>
     </div>
   );
 }
 
-/* ========= Línea MEMOIZADA (no “salta” con hover del donut) ========= */
+
+/* ========= Línea MEMOIZADA ========= */
 const StableLineChart = React.memo(
   function StableLineChart({ data, modo, ticksReduced, xTickFormatter }) {
     return (
@@ -175,7 +186,6 @@ const StableLineChart = React.memo(
     );
   },
   (prev, next) => {
-    // Evita re-render si el hover del donut cambia estados ajenos a estos props
     const sameData = prev.data === next.data;
     const sameModo = prev.modo === next.modo;
     const sameFormatter = prev.xTickFormatter === next.xTickFormatter;
@@ -236,7 +246,7 @@ export default function Dashboard() {
     const r = monthStartEndFromParts(selectedYear, selectedMonth);
     setMonthRange(r);
     setDesde(r.from);
-    setHasta(r.to); // guardo inclusive para mostrar/CSV; para API uso toExclusive
+    setHasta(r.to); // inclusive para mostrar/CSV; para API uso toExclusive
   }, [modo, selectedYear, selectedMonth]);
 
   // ----- Fetch filtrado (server) -----
@@ -251,8 +261,7 @@ export default function Dashboard() {
         } else if (modo === "mes") {
           const r = monthRange.from ? monthRange : monthStartEndFromParts(selectedYear, selectedMonth);
           url.searchParams.set("desde", r.from);
-          // Ventana half-open para incluir último día
-          url.searchParams.set("hasta", r.toExclusive);
+          url.searchParams.set("hasta", r.toExclusive); // half-open
         } else {
           if (isYMD(desde)) url.searchParams.set("desde", desde);
           if (isYMD(hasta)) {
@@ -275,13 +284,12 @@ export default function Dashboard() {
     fetchData();
   }, [modo, dia, desde, hasta, selectedYear, selectedMonth, monthRange]);
 
-  /* ======== FILTRO LOCAL EXTRA (garantiza 1..fin de mes) ======== */
+  /* ======== FILTRO LOCAL EXTRA ======== */
   const filteredRaw = useMemo(() => {
     if (!raw?.length) return [];
 
     if (modo === "mes") {
       const r = monthRange.from ? monthRange : monthStartEndFromParts(selectedYear, selectedMonth);
-      // [from, toExclusive)
       return raw.filter((x) => {
         const ymd = (x?.fecha_captura || "").slice(0, 10);
         return ymd >= r.from && ymd < r.toExclusive;
@@ -290,13 +298,17 @@ export default function Dashboard() {
 
     if (modo === "rango" || modo === "semana") {
       const endPlusOne = (() => {
+        if (!isYMD(hasta)) return null;
         const d = new Date(hasta);
+        if (!isValidDate(d)) return null;
         d.setDate(d.getDate() + 1);
         return toYMD(d);
       })();
       return raw.filter((x) => {
         const ymd = (x?.fecha_captura || "").slice(0, 10);
-        return ymd >= desde && ymd < endPlusOne;
+        const lowerOk = isYMD(desde) ? (ymd >= desde) : true;
+        const upperOk = endPlusOne ? (ymd < endPlusOne) : true;
+        return lowerOk && upperOk;
       });
     }
 
@@ -308,7 +320,6 @@ export default function Dashboard() {
   }, [raw, modo, dia, desde, hasta, monthRange, selectedYear, selectedMonth]);
 
   // ======== SERIES ========
-  // Serie por hora (modo día)
   const serieHoras = useMemo(() => {
     if (modo !== "dia") return [];
     const buckets = Array.from({ length: 24 }, (_, h) => ({
@@ -328,25 +339,17 @@ export default function Dashboard() {
     return withTrend(arr, "x", "y");
   }, [filteredRaw, modo]);
 
-  // Serie agregada:
-  // - rango: por día
-  // - semana: por lunes de la semana
-  // - mes: por DÍA del mes (01..fin de mes)
   const serieAgregada = useMemo(() => {
     if (modo === "dia") return [];
-
     if (modo === "mes") {
-      const start = new Date(selectedYear, selectedMonth - 1, 1);
-      const end = new Date(selectedYear, selectedMonth, 0); // último día
+      const end = new Date(selectedYear, selectedMonth, 0);
       const daysInMonth = end.getDate();
-
       const dailyBuckets = Array.from({ length: daysInMonth }, (_, i) => ({
         x: i + 1,
         label: `${String(i + 1).padStart(2, "0")}-${String(selectedMonth).padStart(2, "0")}`,
         count: 0,
         sum: 0,
       }));
-
       filteredRaw.forEach((r) => {
         const d = new Date(r.fecha_captura);
         const day = d.getDate();
@@ -356,16 +359,11 @@ export default function Dashboard() {
           dailyBuckets[day - 1].sum += v;
         }
       });
-
       const arr = dailyBuckets.map((b) => ({
-        x: b.x,
-        label: b.label,
-        y: b.count ? Number((b.sum / b.count).toFixed(2)) : 0,
+        x: b.x, label: b.label, y: b.count ? Number((b.sum / b.count).toFixed(2)) : 0,
       }));
       return withTrend(arr, "x", "y");
     }
-
-    // Semana / Rango
     const group = new Map();
     filteredRaw.forEach((r) => {
       const ymd = (r?.fecha_captura || "").slice(0, 10);
@@ -380,13 +378,11 @@ export default function Dashboard() {
       const b = group.get(key);
       b.sum += v; b.count++;
     });
-
     const arr = Array.from(group.entries())
       .sort(([a], [b]) => (a < b ? -1 : 1))
       .map(([k, { sum, count }], idx) => ({
         key: k, x: idx, label: k, y: count ? Number((sum / count).toFixed(2)) : 0,
       }));
-
     return withTrend(arr, "x", "y");
   }, [filteredRaw, modo, selectedMonth, selectedYear]);
 
@@ -405,6 +401,57 @@ export default function Dashboard() {
       .sort((a, b) => b[1] - a[1])
       .map(([name, value]) => ({ name, value }));
   }, [filteredRaw]);
+// Total general del donut (para calcular porcentajes reales)
+const totalDonut = useMemo(
+  () => donutData.reduce((a, b) => a + (b?.value ?? 0), 0),
+  [donutData]
+);
+  // ======== Donut pretty labels ========
+const RAD = Math.PI / 180;
+const DONUT_INNER = 72;   // radio interior "estético"
+const DONUT_OUTER = 100;  // radio exterior "estético"
+const MIN_PCT_TO_SHOW = 0.07; // no mostrar porciones < 7% para evitar ruido
+
+function renderPercentLabel({ cx, cy, midAngle, innerRadius, outerRadius, percent }) {
+  if (percent < MIN_PCT_TO_SHOW) return null;
+
+  const r = (innerRadius + (outerRadius - innerRadius) * 0.62);
+  const x = cx + r * Math.cos(-midAngle * RAD);
+  const y = cy + r * Math.sin(-midAngle * RAD);
+
+  const text = `${(percent * 100).toFixed(1)}%`;
+
+  const pad = 6;
+  const h = 18;
+  const charW = 7.2;
+  const w = text.length * charW + pad * 2;
+
+  return (
+    <g>
+      <rect
+        x={x - w / 2}
+        y={y - h / 2}
+        width={w}
+        height={h}
+        rx={8}
+        ry={8}
+        fill="rgba(2,10,23,0.9)"
+        stroke="rgba(148,163,184,0.35)"
+      />
+      <text
+        x={x}
+        y={y}
+        fill="#e6f3ff"
+        fontSize={12}
+        fontWeight={700}
+        textAnchor="middle"
+        dominantBaseline="central"
+      >
+        {text}
+      </text>
+    </g>
+  );
+}
 
   // ======== Tabla ========
   const tablaResumen = useMemo(() => {
@@ -527,13 +574,12 @@ export default function Dashboard() {
     });
   };
 
-  // ======== Eje X (memoizados para referencia estable) ========
+  // ======== Eje X (memoizados) ========
   const MAX_TICKS = 8;
-
   const xTickFormatter = useMemo(() => {
     if (modo === "dia") return (v) => `${String(v).padStart(2, "0")}:00`;
     if (modo === "semana" || modo === "rango") return (v) => toDM(v);
-    return (v) => v; // en mes usamos "dd-mm" ya armado en label
+    return (v) => v;
   }, [modo]);
 
   const ticksReduced = useMemo(() => {
@@ -625,41 +671,53 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Donut 1/4 */}
+        {/* Donut 1/4 con % centrado */}
         <div className="col-span-12 lg:col-span-3 bg-gray-900 border border-cyan-800 rounded-xl p-4">
           <h4 className="text-sm text-gray-300 mb-2 text-center">Distribución de categorías</h4>
           <div className="flex justify-center">
             <PieChart width={donutSize} height={donutSize}>
-              <Tooltip content={<DonutTooltip />} />
+              <Tooltip content={<DonutTooltip total={totalDonut} />} />
               <Pie
-                data={donutData}
-                dataKey="value"
-                nameKey="name"
-                cx="50%"
-                cy="50%"
-                innerRadius={58}
-                outerRadius={88}
-                paddingAngle={2}
-                onMouseEnter={(e) => setHoveredCat(e?.name ?? null)}
-                onMouseLeave={() => setHoveredCat(null)}
-              >
-                {donutData.map((d, i) => (
-                  <Cell
-                    key={i}
-                    fill={CAT_COLORS[d.name] || "#999"}
-                    fillOpacity={hoveredCat && hoveredCat !== d.name ? 0.4 : 1}
-                    stroke={hoveredCat === d.name ? "#a78bfa" : "transparent"}
-                    strokeWidth={hoveredCat === d.name ? 2 : 0}
-                  />
-                ))}
-              </Pie>
+  data={donutData}
+  dataKey="value"
+  nameKey="name"
+  cx="50%"
+  cy="50%"
+  innerRadius={DONUT_INNER}
+  outerRadius={DONUT_OUTER}
+  startAngle={210}
+  endAngle={-150}
+  paddingAngle={3}
+  cornerRadius={6}
+  labelLine={false}
+  label={renderPercentLabel}
+  onMouseEnter={(e) => setHoveredCat(e?.name ?? null)}
+  onMouseLeave={() => setHoveredCat(null)}
+>
+  {donutData.map((d, i) => (
+    <Cell
+      key={i}
+      fill={CAT_COLORS[d.name] || "#999"}
+      fillOpacity={hoveredCat && hoveredCat !== d.name ? 0.45 : 1}
+      stroke="#0b1220"
+      strokeWidth={2}
+      style={{ filter: "url(#ds)" }}
+    />
+  ))}
+</Pie>
+
             </PieChart>
+            <defs>
+  <filter id="ds">
+    <feDropShadow dx="0" dy="1" stdDeviation="2" floodOpacity="0.35" />
+  </filter>
+</defs>
+
           </div>
 
           {/* Diccionario */}
           <div className="mt-4 grid grid-cols-1 gap-3 justify-items-center">
-            {donutData.map((d, idx) => {
-              const isLastOdd = donutData.length % 2 === 1 && idx === donutData.length - 1;
+            {donutData.map((d) => {
               const desc = CAT_DESC[d.name] || "—";
               const active = hoveredCat === d.name;
               return (
@@ -670,7 +728,6 @@ export default function Dashboard() {
                   onMouseLeave={() => setHoveredCat(null)}
                   className={
                     `bg-gray-800/70 border rounded-lg p-3 flex items-start gap-3 w-full transition
-                     ${isLastOdd ? "justify-self-center" : ""}
                      ${active ? "border-cyan-300 ring-2 ring-cyan-300/40 shadow-md shadow-cyan-900/30" : "border-cyan-800"}`
                   }
                 >

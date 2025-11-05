@@ -62,3 +62,5 @@ A través de la mejora de modelos, la expansión del dataset, la integración de
 La incorporación de tecnologías avanzadas —como arquitecturas modernas, clasificación ordinal, análisis temporal y correlación con datos GNSS— permitirá abordar los desafíos actuales en la clasificación de nubosidad y enriquecer el análisis atmosférico.
 
 > 🌠 Este plan estratégico apunta a transformar **Cielo Río Grande** en una **plataforma de referencia** para la observación automatizada del cielo, con potencial de replicación en otras estaciones y aplicaciones en ámbitos científicos, técnicos y educativos.
+
+![alt text](./assets/footer_politecnico.png)
