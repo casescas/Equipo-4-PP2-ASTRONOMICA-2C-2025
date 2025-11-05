@@ -294,12 +294,13 @@ export default function App() {
 
   {/* 2. Radiación Solar y UV */}
  <div className="md:col-span-4">
-<Card className="flex flex-col justify-center">
+<Card className="flex flex-col">
   <PanelTitle icon="☀️">Radiación Solar y UV</PanelTitle>
-  <div className="flex-1 flex items-center justify-center">
+  <div className="flex-1 flex items-center">   {/* centra verticalmente el contenido */}
     <RadiationCard clima={clima} />
   </div>
 </Card>
+
 </div>
 
   {/* 3. Satélite / Radar */}

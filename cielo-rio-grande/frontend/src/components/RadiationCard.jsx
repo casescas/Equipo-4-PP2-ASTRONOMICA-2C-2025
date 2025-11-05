@@ -28,37 +28,61 @@ const RadiationCard = ({ clima }) => {
   }
 
   // 👇 sin p-3; dejá que el padding lo aporte <Card>
-  return (
-    <>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="border-r border-white/10 pr-3">
-          <p className="text-xs font-semibold text-slate-400">Radiación Actual</p>
-          <p className="text-2xl font-black text-white">
-            {radiacion_solar_w_m2 || 'N/D'}
-            <span className="text-sm font-normal text-slate-400"> W/m²</span>
-          </p>
-        </div>
-
-        <div className="pl-3">
-          <p className="text-xs font-semibold text-slate-400">Índice UV</p>
-          <p className={`text-2xl font-black ${uvColor}`}>
-            {uv_index != null ? uv_index.toFixed(1) : 'N/D'}
-          </p>
-          <p className={`text-sm font-bold ${uvColor}`}>{uvRating}</p>
-        </div>
+ return (
+  <div className="w-full">
+    {/* Fila superior: 2 columnas iguales */}
+    <div className="grid grid-cols-2 gap-6 items-end">
+      {/* Radiación actual */}
+      <div className="pr-6 border-r border-white/10">
+        <p className="uppercase text-[11px] tracking-[.18em] text-slate-400 mb-1">
+          Radiación Actual
+        </p>
+        <p className="tabular-nums leading-none">
+          <span className="text-4xl md:text-4xl font-extrabold text-white align-baseline">
+            {radiacion_solar_w_m2 ?? 'N/D'}
+          </span>
+          <span className="ml-2 text-sm font-medium text-slate-400 align-baseline">W/m²</span>
+        </p>
       </div>
 
-      <hr className="my-3 border-white/10" />
+      {/* Índice UV */}
+      <div className="pl-6">
+        <p className="uppercase text-[11px] tracking-[.18em] text-slate-400 mb-1">
+          Índice UV
+        </p>
+      <div className="flex items-baseline gap-2">
+        <p className={`tabular-nums leading-none text-4xl md:text-4xl font-extrabold ${uvColor}`}>
+      {uv_index != null ? uv_index.toFixed(1) : 'N/D'}
+        </p>
+        <p className={`text-base font-semibold ${uvColor}`}>
+      {uvRating}
+         </p>
+    </div>
+  </div>
+</div>
 
-      <div className="flex justify-between text-xs text-slate-300">
-        <span className="font-medium">Máx. Diaria:</span>
-        <span className="font-bold text-white">
-          {max_radiacion_w_m2 || 'N/D'} W/m²
-          {max_radiacion_hora && <span className="ml-1 italic text-slate-400">({max_radiacion_hora} hs)</span>}
+
+    {/* Separador sutil */}
+    <hr className="my-4 border-white/10" />
+
+    {/* Fila inferior: Máx. Diaria (a lo ancho) */}
+    <div className="grid grid-cols-2 items-baseline">
+      <p className="uppercase text-[11px] tracking-[.18em] text-slate-400">
+        Máx. diaria: 
+      </p>
+      <p className="tabular-nums text-right leading-none">
+        <span className="text-base font-semibold text-white">
+          {max_radiacion_w_m2 ?? 'N/D'}
         </span>
-      </div>
-    </>
-  );
+        <span className="ml-1 text-xs font-medium text-slate-400 align-baseline">W/m²</span>
+        {max_radiacion_hora && (
+          <span className="ml-2 italic text-slate-400 text-xs">({max_radiacion_hora} hs)</span>
+        )}
+      </p>
+    </div>
+  </div>
+);
+
 };
 
 export default RadiationCard;
