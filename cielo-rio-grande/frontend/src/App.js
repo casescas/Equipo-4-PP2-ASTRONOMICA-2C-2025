@@ -1,7 +1,8 @@
 // src/App.js
 import React, { useState, useEffect } from "react";
 import Dashboard from "./pages/Dashboard";
-
+import { fetchClima } from "./api/registros"; 
+import RadiationCard from "./components/RadiationCard"; 
 /* ================= Helpers ================= */
 const labelCategoria = (c) =>
   ({ SKC: "Despejado", FEW: "Pocas nubes", SCT: "Nubes dispersas", BKN: "Muy nublado", OVC: "Cubierto" }[c] ||
@@ -17,6 +18,7 @@ const Card = ({ className = "", children }) => (
       "bg-[#0b0f15]/90",
       "shadow-[0_6px_18px_rgba(0,0,0,.45),0_1px_0_rgba(255,255,255,.04)_inset]",
       "backdrop-blur-sm p-5",
+      "h-full flex flex-col",              // ⬅️ clave para igualar alturas
       className,
     ].join(" ")}
   >
@@ -25,6 +27,17 @@ const Card = ({ className = "", children }) => (
   </div>
 );
 
+const PanelTitle = ({ icon = null, children, className = "" }) => (
+  <h3
+    className={[
+      "flex items-center gap-2 text-lg font-semibold text-cyan-300 mb-3",
+      className,
+    ].join(" ")}
+  >
+    {icon && <span className="text-xl">{icon}</span>}
+    {children}
+  </h3>
+);
 /* ================ Gauge (botón) ==================== */
 function ConfidenceRing({ value = 0, size = 120, stroke = 12, onClick }) {
   const pct = Math.max(0, Math.min(1, Number(value) || 0));
@@ -119,7 +132,7 @@ function WeatherDetails({ clima }) {
   );
   return (
     <>
-      <h3 className="text-xl font-semibold text-cyan-300 mb-3">Clima Detallado</h3>
+      <h3 className="text-xl font-semibold text-cyan-300 mb-3"></h3>
       <div className="text-sm">
         <Row k="Temperatura:" v={clima?.temp} suf=" °C" />
         <Row k="Sensación térmica:" v={clima?.sensacion_termica} suf=" °C" />
@@ -150,9 +163,14 @@ export default function App() {
 
   // fetch clima + octas
   useEffect(() => {
-    fetch("http://127.0.0.1:8000/clima").then((r) => r.json()).then(setClima).catch(() => setClima({}));
-    fetch("http://127.0.0.1:8000/octas").then((r) => r.json()).then(setOctas).catch(() => setOctas({}));
-  }, [timestamp]);
+    // Usamos la función fetchClima importada
+    fetchClima().then(setClima).catch((err) => {
+        console.error(err);
+        setClima({});
+    });
+    
+    fetch("http://127.0.0.1:8000/octas").then((r) => r.json()).then(setOctas).catch(() => setOctas({}));
+  }, [timestamp]);
 
   console.log(octas)
   // cleanup blob
@@ -265,47 +283,63 @@ export default function App() {
         </Card>
 
         {/* ===== Abajo: Clima (izq) + Radar (der) ===== */}
-        <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Clima Detallado (mejor alineado) */}
-          <Card>
-            <WeatherDetails clima={clima} />
-          </Card>
+        <section className="grid grid-cols-1 md:grid-cols-12 gap-6 auto-rows-[1fr]">
+  {/* 1. Clima Detallado */}
+  <div className="md:col-span-4">
+    <Card>
+      <PanelTitle icon="🌥️">Clima Detallado</PanelTitle>
+      <WeatherDetails clima={clima} />
+    </Card>
+  </div>
 
-          {/* Satélite / Radar */}
-          <Card className="bg-gradient-to-br from-[#0c0f14]/90 to-[#131821]/90">
-            <h3 className="text-lg font-semibold text-cyan-300 mb-3">🛰️ Satélite / Radar</h3>
+  {/* 2. Radiación Solar y UV */}
+ <div className="md:col-span-4">
+<Card className="flex flex-col justify-center">
+  <PanelTitle icon="☀️">Radiación Solar y UV</PanelTitle>
+  <div className="flex-1 flex items-center justify-center">
+    <RadiationCard clima={clima} />
+  </div>
+</Card>
+</div>
 
-            <div className="relative rounded-xl overflow-hidden border border-cyan-300/10 bg-[radial-gradient(1200px_400px_at_10%_0,rgba(0,255,255,.08),transparent_40%)]">
-              {satImgUrl ? (
-                <img src={satImgUrl} alt="Radar" className="h-60 w-full object-cover" />
-              ) : (
-                <div className="h-60 w-full grid place-items-center text-[11px] tracking-[.2em] text-cyan-100/80">
-                  RADAR PREVIEW — tocá “Ver Nubes”
-                </div>
-              )}
-              <div className="absolute left-2 top-2 rounded-md border border-white/10 bg-black/50 px-2 py-1 text-[11px] tracking-widest text-cyan-100 backdrop-blur">
-                RADAR PREVIEW
-              </div>
-            </div>
+  {/* 3. Satélite / Radar */}
+  <div className="md:col-span-4">
+    <Card className="bg-gradient-to-br from-[#0c0f14]/90 to-[#131821]/90">
+      <PanelTitle>🛰️ Satélite / Radar</PanelTitle>
 
-            <div className="mt-3 flex justify-center gap-3">
-              <button
-                className="rounded-lg bg-gradient-to-br from-sky-600 to-sky-700 px-4 py-2 font-bold shadow hover:scale-[1.02] transition disabled:opacity-60"
-                onClick={() => fetchSatellite("clouds_new")}
-                disabled={loadingSat}
-              >
-                {loadingSat ? "Cargando..." : "Ver Nubes"}
-              </button>
-              <button
-                className="rounded-lg bg-slate-800 px-4 py-2 font-semibold shadow hover:bg-slate-700 transition disabled:opacity-60"
-                onClick={() => setSatImgUrl(null)}
-                disabled={loadingSat || !satImgUrl}
-              >
-                Limpiar
-              </button>
-            </div>
-          </Card>
-        </section>
+      {/* que el preview llene la tarjeta sin fijar altura dura */}
+      <div className="relative rounded-xl overflow-hidden border border-cyan-300/10 bg-[radial-gradient(1200px_400px_at_10%_0,rgba(0,255,255,.08),transparent_40%)] flex-1 min-h-[260px]">
+        {satImgUrl ? (
+          <img src={satImgUrl} alt="Radar" className="absolute inset-0 w-full h-full object-cover" />
+        ) : (
+          <div className="h-full w-full grid place-items-center text-[11px] tracking-[.2em] text-cyan-100/80">
+            RADAR PREVIEW — tocá “Ver Nubes”
+          </div>
+        )}
+        <div className="absolute left-2 top-2 rounded-md border border-white/10 bg-black/50 px-2 py-1 text-[11px] tracking-widest text-cyan-100 backdrop-blur">
+          RADAR PREVIEW
+        </div>
+      </div>
+
+      <div className="mt-3 flex justify-center gap-3">
+        <button
+          className="rounded-lg bg-gradient-to-br from-sky-600 to-sky-700 px-4 py-2 font-bold shadow hover:scale-[1.02] transition disabled:opacity-60"
+          onClick={() => fetchSatellite("clouds_new")}
+          disabled={loadingSat}
+        >
+          {loadingSat ? "Cargando..." : "Ver Nubes"}
+        </button>
+        <button
+          className="rounded-lg bg-slate-800 px-4 py-2 font-semibold shadow hover:bg-slate-700 transition disabled:opacity-60"
+          onClick={() => setSatImgUrl(null)}
+          disabled={loadingSat || !satImgUrl}
+        >
+          Limpiar
+        </button>
+      </div>
+    </Card>
+  </div>
+</section>
 
         {/* ===== Dashboard ===== */}
         <section className="px-1 pt-8">

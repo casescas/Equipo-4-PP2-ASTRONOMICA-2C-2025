@@ -17,3 +17,4 @@ torchaudio
 pandas
 matplotlib
 scikit-learn
+beautifulsoup4

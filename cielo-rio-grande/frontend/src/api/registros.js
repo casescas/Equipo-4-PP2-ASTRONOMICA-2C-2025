@@ -21,6 +21,9 @@ function normalizeToYMD(input) {
 }
 
 /**
+
+
+/**
  * fetchRegistros({ desde, hasta })
  * - Envía SIEMPRE YYYY-MM-DD (sin horas) y nunca params vacíos.
  * - Tolera payload: [], {items:[]}, {data:[]}.
@@ -85,4 +88,28 @@ export function filterByDateRange(rows, fromYmd, toYmd) {
     if (toYmd && r.ymd > toYmd) return false;
     return true;
   });
+}
+
+
+// api/registros.js (Añadir al final del archivo)
+
+/**
+ * fetchClima()
+ * Obtiene los datos de clima/radiación en tiempo real del endpoint /clima.
+ * @returns {Promise<object>} Objeto con todos los datos combinados (OWM + Radiación).
+ */
+export async function fetchClima() {
+  const url = `${BASE}/clima`;
+
+  const res = await fetch(url);
+  if (!res.ok) {
+    const msg = await res.text().catch(() => "Error desconocido");
+    // Lanza un error específico para el clima/radiación
+    throw new Error(`[Clima] HTTP ${res.status} ${res.statusText} - ${msg}`);
+  }
+
+  const json = await res.json();
+  
+  // Devolvemos el JSON tal cual, con todos los campos (temp, uv_index, etc.)
+  return json; 
 }
