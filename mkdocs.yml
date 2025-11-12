@@ -10,7 +10,7 @@ nav:
   - Inicio: index.md
   - Guia de Uso: Guia_de_Uso.md
   - API, Workflow y Backfill: API_Flujo_Backfill.md
-  
+  - Manual de Usuario: Manual_de_usuario.md
   - Reportes: 
     - Introducción: Reportes.md
     - Reporte de modelo EfficientNet_B0: Reporte_EfficientNet_B0.md

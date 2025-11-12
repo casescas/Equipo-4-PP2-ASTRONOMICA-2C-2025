@@ -43,10 +43,9 @@ const isValidDate = (d) => d instanceof Date && !isNaN(d);
 
 function toYMD(date) {
   if (!isValidDate(date)) return "";
-  return new Date(date.getTime() - date.getTimezoneOffset() * 60000)
-    .toISOString()
-    .slice(0, 10);
+  return date.toISOString().slice(0, 10);
 }
+
 function ymdOffset(days, baseYmd) {
   const d = (baseYmd && isYMD(baseYmd)) ? new Date(baseYmd) : new Date();
   if (!isValidDate(d)) return "";
