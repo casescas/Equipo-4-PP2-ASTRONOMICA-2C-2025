@@ -1,0 +1,1134 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://github.com/casescas/Equipo-4-PP2-ASTRONOMICA-2C-2025/API_Flujo_Backfill/">
+      
+      
+        <link rel="prev" href="../Guia_de_Uso/">
+      
+      
+        <link rel="next" href="../Manual_de_usuario/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.0">
+    
+    
+      
+        <title>API, Workflow y Backfill - ESTACION ASTRONOMICA RIO GRANDE</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.618322db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#app-cielo-rio-grande-api-flujo-y-backfill" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="ESTACION ASTRONOMICA RIO GRANDE" class="md-header__button md-logo" aria-label="ESTACION ASTRONOMICA RIO GRANDE" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            ESTACION ASTRONOMICA RIO GRANDE
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              API, Workflow y Backfill
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/casescas/Equipo-4-PP2-ASTRONOMICA-2C-2025" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Equipo-4-PP2-ASTRONOMICA-2C-2025
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="ESTACION ASTRONOMICA RIO GRANDE" class="md-nav__button md-logo" aria-label="ESTACION ASTRONOMICA RIO GRANDE" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    ESTACION ASTRONOMICA RIO GRANDE
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/casescas/Equipo-4-PP2-ASTRONOMICA-2C-2025" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Equipo-4-PP2-ASTRONOMICA-2C-2025
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Inicio
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Guia_de_Uso/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guia de Uso
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API, Workflow y Backfill
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API, Workflow y Backfill
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#flujo-general" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Flujo general
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#modos-de-funcionamiento" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🧩 Modos de funcionamiento
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#backfill-backfillpy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Backfill (backfill.py)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Backfill (backfill.py)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#funcionamiento" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Funcionamiento
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ejemplo-de-ejecucion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ejemplo de ejecución
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#estructura-de-carpetas-del-proveedor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Estructura de carpetas del proveedor
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#como-lo-maneja-el-codigo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cómo lo maneja el código
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validaciones-y-tolerancia-a-fallos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validaciones y tolerancia a fallos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#octas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        /octas
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#historial" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        /historial
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#imagen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        /imagen
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#satellite" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        /satellite
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#clima" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        /clima
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Manual_de_usuario/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Manual de Usuario
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reportes
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reportes
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Reportes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Introducción
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Reporte_EfficientNet_B0/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reporte de modelo EfficientNet_B0
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Reporte_EfficientNet_B3/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reporte de modelo EfficientNet_B3
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../Plan_de_Escalamiento/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plan de Escalamiento
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#flujo-general" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Flujo general
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#modos-de-funcionamiento" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        🧩 Modos de funcionamiento
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#backfill-backfillpy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Backfill (backfill.py)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Backfill (backfill.py)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#funcionamiento" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Funcionamiento
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ejemplo-de-ejecucion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ejemplo de ejecución
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#estructura-de-carpetas-del-proveedor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Estructura de carpetas del proveedor
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#como-lo-maneja-el-codigo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cómo lo maneja el código
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validaciones-y-tolerancia-a-fallos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validaciones y tolerancia a fallos
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#octas" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        /octas
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#historial" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        /historial
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#imagen" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        /imagen
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#satellite" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        /satellite
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#clima" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        /clima
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="app-cielo-rio-grande-api-flujo-y-backfill"><strong>🌤️ APP Cielo Río Grande: API, Flujo y Backfill</strong></h1>
+<p><img alt="alt text" src="../assets/architecture.png" /></p>
+<h3 id="flujo-general"><strong>Flujo general</strong></h3>
+<p>El sistema procesa imágenes del cielo capturadas periódicamente por la cámara instalada en el observatorio.</p>
+<p>Cada imagen pasa por un <strong>pipeline automatizado</strong> que se ejecuta cada 10 minutos y realiza tres tareas principales:</p>
+<ol>
+<li>
+<p>Obtiene la nueva imagen desde la fuente configurada (IMG_URL_BASE).</p>
+</li>
+<li>
+<p>Procesa la imagen con el modelo de clasificación de nubes (predict_octas).</p>
+</li>
+<li>
+<p>Almacena el resultado en la base de datos local (registros-octas.db).</p>
+</li>
+</ol>
+<p>💡 <em>El flujo automático (trigger) se ejecuta cada 10 minutos mediante APScheduler, mientras que el backfill se utiliza de manera eventual para reconstruir períodos pasados.</em></p>
+<p>El <strong>scheduler</strong> (definido en <code>jobs/scheduler.py</code>) ejecuta el pipeline de forma continua, garantizando la actualización de los datos en tiempo real.</p>
+<p>Cada ejecución genera una nueva predicción de cobertura nubosa (en octas) junto con su nivel de confianza y categoría, lo que permite alimentar el <strong>dashboard analítico</strong> con información actualizada y consistente.</p>
+<p>La arquitectura se apoya en los siguientes módulos:</p>
+<ul>
+<li>
+<p><strong><code>utils.image_utils</code></strong>: construye la URL de cada imagen en base al timestamp.</p>
+</li>
+<li>
+<p><strong><code>services.clouds_service</code></strong>: gestiona las funciones de predicciones y de obtención de ellas.</p>
+</li>
+<li>
+<p><strong><code>data/registros-octas.db</code></strong>: almacena los registros históricos y evita duplicados mediante claves únicas.</p>
+</li>
+<li>
+<p><strong><code>jobs/scheduler.py</code></strong>: coordina las ejecuciones periódicas del pipeline con <code>APScheduler</code>.</p>
+</li>
+</ul>
+<h2 id="modos-de-funcionamiento"><strong>🧩 Modos de funcionamiento</strong></h2>
+<p>El sistema opera en <strong>dos modos complementarios</strong>:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Modo</th>
+<th style="text-align: left;">Descripción</th>
+<th style="text-align: left;">Frecuencia</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Trigger (automático)</strong></td>
+<td style="text-align: left;">Obtiene la última imagen disponible cada 10 minutos, la procesa con el modelo y guarda el resultado.</td>
+<td style="text-align: left;">Permanente</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Backfill (histórico)</strong></td>
+<td style="text-align: left;">Recorre un rango de fechas pasado y obtiene las imágenes correspondientes para generar el registro histórico.</td>
+<td style="text-align: left;">Eventual / bajo demanda</td>
+</tr>
+</tbody>
+</table>
+<h2 id="backfill-backfillpy"><strong>Backfill (<code>backfill.py</code>)</strong></h2>
+<p>El script <code>backfill.py</code> permite <strong>procesar imágenes históricas</strong> dentro de un rango de fechas específico, ejecutando el mismo flujo del pipeline principal, pero de manera <strong>batch</strong> (no en tiempo real).</p>
+<p>Esto resulta útil para <strong>reconstruir períodos pasados</strong> o completar datos faltantes en la base que también serán utilizados por el dashboard.</p>
+<h3 id="funcionamiento"><strong>Funcionamiento</strong></h3>
+<p>El backfill recorre el rango temporal definido por los argumentos <code>--desde</code> y <code>--hasta</code>, procesando imágenes en intervalos de una hora.</p>
+<p>Dentro de cada hora se obtienen <strong>6 imágenes fijas</strong>, correspondientes a los minutos válidos definidos en la constante:</p>
+<p><strong>MINUTOS_VALIDOS \= [2, 12, 22, 32, 42, 52]</strong></p>
+<p>Por cada imagen:</p>
+<ol>
+<li>
+<p>Se genera la URL mediante <code>image_url(IMG_URL_BASE, intento, minuto, with_year_dir=True)</code>.</p>
+</li>
+<li>
+<p>Se obtiene la imagen con una sesión HTTP configurada con reintentos automáticos (<code>_new_session()</code> usa <code>Retry</code> y <code>HTTPAdapter</code>).</p>
+</li>
+<li>
+<p>Se clasifica la imagen con <code>predict_octas(resp.content)</code>.</p>
+</li>
+<li>
+<p>Se guarda el resultado con <code>save_prediction(data)</code>, que devuelve <code>True</code> si fue insertado o <code>False</code> si ya existía.</p>
+</li>
+</ol>
+<p>La ejecución contabiliza los resultados y muestra un resumen al finalizar.</p>
+<h3 id="ejemplo-de-ejecucion"><strong>Ejemplo de ejecución</strong></h3>
+<p><code>python -m backfill --desde "2025-01-01T00:00" --hasta "2025-01-31T23:59"</code></p>
+<p>Durante la ejecución se mostrará el progreso y, al finalizar, un resumen con el total de imágenes procesadas:</p>
+<p><code>📊 Backfill → total=864 | nuevos=830 | duplicados=28 | fallidos=6</code></p>
+<h3 id="estructura-de-carpetas-del-proveedor"><strong>Estructura de carpetas del proveedor</strong></h3>
+<p>El servidor de imágenes expone dos esquemas de ruta:</p>
+<p><strong>Actual (sin subcarpeta por año)</strong><br />
+ Archivos recientes disponibles en la raíz del <code>IMG_URL_BASE</code>.</p>
+<p><code>{IMG_URL_BASE}/{YYYY}-{MM}{DD}{HH}{MM}.jpg</code></p>
+<ol>
+<li>Ej.: <code>.../2025-09010002.jpg</code></li>
+</ol>
+<p><strong>Histórico (con subcarpeta por año)</strong><br />
+ Años previos se sirven dentro de una carpeta por año.</p>
+<p><code>{IMG_URL_BASE}/{YYYY}/{YYYY}-{MM}{DD}{HH}{MM}.jpg</code></p>
+<p>Ej.: <code>.../2024/2024-09010002.jpg</code></p>
+<p>Por eso, cuando hacemos backfill sobre 2024 (u otros años anteriores), <strong>hay</strong> que incluir la carpeta del año en la URL.</p>
+<h3 id="como-lo-maneja-el-codigo"><strong>Cómo lo maneja el código</strong></h3>
+<p>El helper <code>image_url(...)</code> ya admite este comportamiento mediante el parámetro<br />
+<strong><code>with_year_dir: bool</code></strong>:</p>
+<ul>
+<li>
+<p><strong>Pipeline online</strong> (<code>jobs/tasks.py</code>): <code>with_year_dir=False</code><br />
+   (obtiene de imágenes <strong>recientes</strong> en la raíz).</p>
+</li>
+<li>
+<p><strong>Backfill</strong> (<code>backfill.py</code>): <code>with_year_dir=True</code><br />
+   (obtiene de <strong>histórico</strong>, incluyendo la carpeta de año).</p>
+</li>
+</ul>
+<p>Ejemplo en <code>backfill.py</code> :</p>
+<p><code>url_imagen = image_url(IMG_URL_BASE, intento, minuto, with_year_dir=True)</code></p>
+<h3 id="validaciones-y-tolerancia-a-fallos"><strong>Validaciones y tolerancia a fallos</strong></h3>
+<ul>
+<li>
+<p>Si <code>--hasta</code> es menor que <code>--desde</code>, el script finaliza con un mensaje de error.</p>
+</li>
+<li>
+<p>Los errores de red o imágenes no disponibles se contabilizan como <strong>fallidos</strong> (<code>miss</code>).</p>
+</li>
+<li>
+<p>La lógica es <strong>idempotente</strong>: no duplica registros ya existentes en la base.</p>
+</li>
+<li>
+<p>Cada intento tiene un tiempo de espera máximo (<code>timeout=10</code>) y dos reintentos configurados (<code>Retry(total=2)</code>).</p>
+</li>
+</ul>
+<p><strong>Variables y funciones principales</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Variable / función</th>
+<th style="text-align: left;">Descripción</th>
+<th style="text-align: left;">Tipo</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>MINUTOS_VALIDOS</strong></td>
+<td style="text-align: left;">Lista de minutos fijos por hora (6 imágenes).</td>
+<td style="text-align: left;">Constante</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>_new_session()</strong></td>
+<td style="text-align: left;">Crea la sesión HTTP con política de reintentos.</td>
+<td style="text-align: left;">Interna</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>backfill(desde, hasta)</strong></td>
+<td style="text-align: left;">Ejecuta el recorrido temporal y procesamiento.</td>
+<td style="text-align: left;">Pública</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>image_url()</strong></td>
+<td style="text-align: left;">Construye la URL de cada imagen según fecha y minuto.</td>
+<td style="text-align: left;">Utilidad</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>predict_octas()</strong></td>
+<td style="text-align: left;">Ejecuta el modelo de clasificación y devuelve el resultado.</td>
+<td style="text-align: left;">Servicio</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>save_prediction()</strong></td>
+<td style="text-align: left;">Guarda el registro en la base o lo omite si ya existe.</td>
+<td style="text-align: left;">Servicio</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Consideraciones Finales:</strong> </p>
+<p>El sistema <strong>Cielo Río Grande</strong> combina un flujo continuo de actualización automática con un mecanismo histórico flexible (backfill).</p>
+<p>Esta arquitectura permite mantener un registro completo y consistente de la nubosidad, tanto actual como pasada, garantizando datos confiables para el análisis y la visualización en el dashboard.</p>
+<p><strong>🔌 Endpoints de la API</strong></p>
+<p>El sistema expone una serie de endpoints implementados en <strong>FastAPI</strong>, que permiten consultar los resultados generados por el pipeline y complementar la información visualizada en el dashboard.</p>
+<p>Todos los endpoints están definidos dentro de la carpeta <code>backend/routers/</code>.</p>
+<h3 id="octas"><strong><code>/octas</code></strong></h3>
+<p>Devuelve la <strong>última predicción registrada</strong> en la base de datos, incluyendo la cobertura nubosa en octas, el tipo de cielo, el nivel de confianza y la URL de la imagen procesada.</p>
+<p>Es el punto de acceso principal para el <strong>dashboard en tiempo real</strong>.</p>
+<h3 id="historial"><strong><code>/historial</code></strong></h3>
+<p>Permite consultar el <strong>registro histórico</strong> de predicciones dentro de un rango de fechas opcional (<code>desde</code> y <code>hasta</code> en formato <code>YYYY-MM-DD</code>).<br />
+ Si no se especifican fechas, devuelve el conjunto más reciente de registros.<br />
+ Incluye validación interna que impide solicitar rangos en los que <code>hasta &lt; desde</code>.</p>
+<h3 id="imagen"><strong><code>/imagen</code></strong></h3>
+<p>Redirige a la <strong>última imagen del cielo disponible</strong> en el servidor público.</p>
+<p>Si la imagen correspondiente al instante actual no está disponible, retrocede automáticamente 10 minutos.</p>
+<p>Se utiliza para <strong>visualizar la imagen en vivo</strong> en el dashboard.</p>
+<h3 id="satellite"><strong><code>/satellite</code></strong></h3>
+<p>Obtiene y devuelve una <strong>imagen satelital (PNG)</strong> con la capa de nubosidad proveniente de OpenWeatherMap.</p>
+<p>Se emplea como <strong>complemento visual</strong> para contrastar la predicción local con datos satelitales externos.</p>
+<h3 id="clima"><strong><code>/clima</code></strong></h3>
+<p>Consulta el <strong>estado meteorológico actual</strong> (temperatura, humedad, presión, viento, etc.) a través del servicio OpenWeatherMap.</p>
+<p>Sirve para enriquecer el contexto de las predicciones generadas por el modelo y ofrecer una visión más completa en el dashboard.</p>
+<p><strong>Conclusiones Finales:</strong> </p>
+<p>Estos endpoints permiten integrar los resultados del modelo con el entorno de visualización, ofreciendo acceso tanto a la predicción más reciente como a los registros históricos y datos complementarios de clima y satélite.</p>
+<p>Todos los servicios manejan errores de red y validaciones internas para garantizar respuestas consistentes y actualizadas.</p>
+<p><img alt="alt text" src="../assets/footer_politecnico.png" /></p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": [], "search": "../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.e71a0d61.min.js"></script>
+      
+    
+  </body>
+</html>
